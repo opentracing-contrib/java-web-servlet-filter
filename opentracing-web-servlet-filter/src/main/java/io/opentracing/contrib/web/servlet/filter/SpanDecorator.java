@@ -83,7 +83,7 @@ public interface SpanDecorator {
         }
 
         private Map<String, String> logsForException(Throwable throwable) {
-            Map<String, String> errorLog = new HashMap<>();
+            Map<String, String> errorLog = new HashMap<>(3);
             errorLog.put("event", Tags.ERROR.getKey());
             if (throwable.getMessage() != null) {
                 errorLog.put("message", throwable.getLocalizedMessage());
