@@ -35,7 +35,7 @@ Current server span is accessible in HttpServletRequest attributes.
 ```
 
 ## Release
-Follow instructions in [RELEASE](README.md)
+Follow instructions in [RELEASE](RELEASE.md)
 
 
    [ci-img]: https://travis-ci.org/opentracing-contrib/java-web-servlet-filter.svg?branch=master
