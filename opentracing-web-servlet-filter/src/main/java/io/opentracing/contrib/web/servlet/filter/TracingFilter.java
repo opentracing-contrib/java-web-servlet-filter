@@ -46,7 +46,7 @@ import io.opentracing.tag.Tags;
  * </pre>
  *
  * Current server span is accessible via {@link HttpServletRequest#getAttribute(String)} with name
- * {@link TracingFilter#ACTIVE_SPAN}.
+ * {@link TracingFilter#SERVER_SPAN_CONTEXT}.
  *
  * @author Pavol Loffay
  */
@@ -63,9 +63,10 @@ public class TracingFilter implements Filter {
      */
     public static final String SPAN_DECORATORS = TracingFilter.class.getName() + ".spanDecorators";
     /**
-     * Used as a key of {@link HttpServletRequest#setAttribute(String, Object)} to inject current server span
+    /**
+     * Used as a key of {@link HttpServletRequest#setAttribute(String, Object)} to inject server span context
      */
-    public static final String ACTIVE_SPAN = TracingFilter.class.getName() + ".activeSpan";
+    public static final String SERVER_SPAN_CONTEXT = TracingFilter.class.getName() + ".activeSpanContext";
 
     private FilterConfig filterConfig;
     private boolean skipFilter;
@@ -135,7 +136,7 @@ public class TracingFilter implements Filter {
         /**
          * Check if request has been already traced do not proceed.
          */
-        if (servletRequest.getAttribute(ACTIVE_SPAN) != null) {
+        if (servletRequest.getAttribute(SERVER_SPAN_CONTEXT) != null) {
             chain.doFilter(servletRequest, servletResponse);
         } else if (isTraced(httpRequest, httpResponse)){
             SpanContext extractedContext = tracer.extract(Format.Builtin.HTTP_HEADERS,
@@ -146,7 +147,7 @@ public class TracingFilter implements Filter {
                     .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER)
                     .start();
 
-            httpRequest.setAttribute(ACTIVE_SPAN, span);
+            httpRequest.setAttribute(SERVER_SPAN_CONTEXT, span.context());
 
             for (SpanDecorator spanDecorator: spanDecorators) {
                 spanDecorator.onRequest(httpRequest, span);
@@ -183,5 +184,15 @@ public class TracingFilter implements Filter {
      */
     protected boolean isTraced(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
         return true;
+    }
+
+    /**
+     * Get context of server span.
+     *
+     * @param servletRequest request
+     * @return server span context
+     */
+    public static SpanContext serverSpanContext(ServletRequest servletRequest) {
+        return (SpanContext) servletRequest.getAttribute(SERVER_SPAN_CONTEXT);
     }
 }

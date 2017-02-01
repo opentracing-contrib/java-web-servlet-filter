@@ -42,6 +42,24 @@ public class TracingFilterTest extends AbstractJettyTest {
     }
 
     @Test
+    public void testLocalSpan() throws IOException {
+        {
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .url(localRequestUrl("/localSpan"))
+                    .build();
+
+            client.newCall(request).execute();
+        }
+
+        List<MockSpan> mockSpans = mockTracer.finishedSpans();
+        Assert.assertEquals(2, mockSpans.size());
+
+        Assert.assertEquals(mockSpans.get(0).context().traceId(), mockSpans.get(1).context().traceId());
+        Assert.assertEquals(mockSpans.get(0).parentId(), mockSpans.get(1).context().spanId());
+    }
+
+    @Test
     public void testNotExistingUrl() throws IOException {
         {
             OkHttpClient client = new OkHttpClient();
