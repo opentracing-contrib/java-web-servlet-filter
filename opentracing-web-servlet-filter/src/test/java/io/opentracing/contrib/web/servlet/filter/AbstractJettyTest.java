@@ -19,11 +19,14 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.After;
 import org.junit.Before;
 
-import io.opentracing.mock.MockTracer;
+import io.opentracing.SpanContext;
+import io.opentracing.Tracer;
 import io.opentracing.mock.HttpHeadersPropagator;
+import io.opentracing.mock.MockTracer;
 
 /**
  * @author Pavol Loffay
@@ -43,6 +46,7 @@ public abstract class AbstractJettyTest {
         ServletContextHandler servletContext = new ServletContextHandler();
         servletContext.setContextPath("/");
         servletContext.addServlet(TestServlet.class, "/hello");
+        servletContext.addServlet(new ServletHolder(new LocalSpanServlet(mockTracer)), "/localSpan");
         servletContext.addServlet(ExceptionServlet.class, "/servletException");
 
         servletContext.addFilter(new FilterHolder(tracingFilter()), "/*", EnumSet.of(DispatcherType.REQUEST,
@@ -72,9 +76,30 @@ public abstract class AbstractJettyTest {
     public static class TestServlet extends HttpServlet {
 
         @Override
-        protected void service(HttpServletRequest request, HttpServletResponse response)
+        public void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
             response.setStatus(HttpServletResponse.SC_ACCEPTED);
+        }
+    }
+
+    public static class LocalSpanServlet extends HttpServlet {
+
+        private io.opentracing.Tracer tracer;
+
+        public LocalSpanServlet(Tracer tracer) {
+            this.tracer = tracer;
+        }
+
+        @Override
+        public void doGet(HttpServletRequest request, HttpServletResponse response)
+                throws ServletException, IOException {
+
+            SpanContext spanContext = (SpanContext)request.getAttribute(TracingFilter.SERVER_SPAN_CONTEXT);
+            io.opentracing.Tracer.SpanBuilder spanBuilder = tracer.buildSpan("localSpan");
+
+            spanBuilder.asChildOf(spanContext)
+                    .start()
+                    .finish();
         }
     }
 

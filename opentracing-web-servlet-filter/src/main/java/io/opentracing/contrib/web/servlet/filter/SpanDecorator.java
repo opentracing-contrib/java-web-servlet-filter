@@ -25,7 +25,7 @@ public interface SpanDecorator {
     /**
      * Decorate span before {@link javax.servlet.Filter#doFilter(ServletRequest, ServletResponse, FilterChain)} is
      * called. This is called right after span in created. Span is already present in request attributes with name
-     * {@link TracingFilter#ACTIVE_SPAN}.
+     * {@link TracingFilter#SERVER_SPAN_CONTEXT}.
      *
      * @param httpServletRequest request
      * @param span span to decorate
