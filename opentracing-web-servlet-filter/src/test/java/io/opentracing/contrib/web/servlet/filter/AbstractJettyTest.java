@@ -62,7 +62,7 @@ public abstract class AbstractJettyTest {
     }
 
     protected Filter tracingFilter() {
-        return new TracingFilter(mockTracer, Arrays.asList(SpanDecorator.STANDARD_TAGS), TracingDecision.TRACE_ALL);
+        return new TracingFilter(mockTracer, Arrays.asList(SpanDecorator.STANDARD_TAGS));
     }
 
     public String localRequestUrl(String path) {
