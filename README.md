@@ -15,8 +15,7 @@ Tracing filter can be programmatically initialized:
 or added in `web.xml` but it requires to add several properties to ServletContext attributes.
 ```java
    servletContext.setAttribute(TracingFilter.TRACER, tracer);
-   servletContext.setAttribute(TracingFilter.SPAN_DECORATORS, decorators); // optional, if no present SpanDecorator
-   .STANDARD_TAGS is applied
+   servletContext.setAttribute(TracingFilter.SPAN_DECORATORS, decorators); // optional, if no present SpanDecorator.STANDARD_TAGS is applied
    servletContext.setAttribute(TracingFilter.TRACING_DECISION, tracingDecision); // optional
 ```
 
