@@ -8,25 +8,23 @@ This library provides instrumentation for Java Web Servlet applications.
 
 Tracing filter can be programmatically initialized:
 ```java
-   TracingFilter filter = new TracingFilter(tracer, Arrays.asList(SpanDecorator.STANDARD_TAGS, TracingDecision.TRACE_ALL))
+   TracingFilter filter = new TracingFilter(tracer, Arrays.asList(SpanDecorator.STANDARD_TAGS)
    servletContext.addFilter("tracingFilter", filter);
 ```
 
-or added in `web.xml` but it requires to add several properties to ServletContext attributes.
+or added it to `web.xml`, however it requires to add following properties to ServletContext attributes:
 ```java
    servletContext.setAttribute(TracingFilter.TRACER, tracer);
    servletContext.setAttribute(TracingFilter.SPAN_DECORATORS, decorators); // optional, if no present SpanDecorator.STANDARD_TAGS is applied
-   servletContext.setAttribute(TracingFilter.TRACING_DECISION, tracingDecision); // optional
 ```
+
+* `SpanDecorator` - decorate span (add tags, logs, change span operation name).
 
 ## Accessing Server Span
 Current server span is accessible in HttpServletRequest attributes.
 ```java
    Span span = (Span)httpservletRequest.getAttribute(TracingFilter.ACTIVE_SPAN);
 ```
-
-* `TracingDecision` - provide your implementation in case if you would like to exclude some urls from being traced.
-* `SpanDecorator` - decorate span (add tags, logs...).
 
 ## Development
 ```shell

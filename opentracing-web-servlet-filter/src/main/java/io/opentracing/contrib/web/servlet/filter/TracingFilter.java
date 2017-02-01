@@ -32,7 +32,7 @@ import io.opentracing.tag.Tags;
  *
  * <pre>
  * {@code
-  * TracingFilter filter = new TracingFilter(tracer, Arrays.asList(SpanDecorator.STANDARD_TAGS, TracingDecision.TRACE_ALL))
+  * TracingFilter filter = new TracingFilter(tracer, Arrays.asList(SpanDecorator.STANDARD_TAGS))
  *  servletContext.addFilter("tracingFilter", filter);
   * }
  * </pre>
@@ -42,7 +42,6 @@ import io.opentracing.tag.Tags;
  * {@code
  *  servletContext.setAttribute({@link TracingFilter#TRACER}, tracer);
  *  servletContext.setAttribute({@link TracingFilter#SPAN_DECORATORS}, decorators); // optional, if no present SpanDecorator.STANDARD_TAGS is applied
- *  servletContext.setAttribute({@link TracingFilter#TRACING_DECISION}, tracingDecision); // optional
  * }
  * </pre>
  *
@@ -64,10 +63,6 @@ public class TracingFilter implements Filter {
      */
     public static final String SPAN_DECORATORS = TracingFilter.class.getName() + ".spanDecorators";
     /**
-     * Use as a key of {@link ServletContext#setAttribute(String, Object)} to set tracing decision
-     */
-    public static final String TRACING_DECISION = TracingFilter.class.getName() + ".tracingDecision";
-    /**
      * Used as a key of {@link HttpServletRequest#setAttribute(String, Object)} to inject current server span
      */
     public static final String ACTIVE_SPAN = TracingFilter.class.getName() + ".activeSpan";
@@ -77,12 +72,10 @@ public class TracingFilter implements Filter {
 
     private Tracer tracer;
     private List<SpanDecorator> spanDecorators;
-    private TracingDecision tracingDecision;
 
     /**
-     * When using this constructor one has to provide required ({@link TracingFilter#TRACER},
-     * optional {@link TracingFilter#SPAN_DECORATORS}, optional {@link TracingFilter#TRACING_DECISION})
-     * attributes in {@link ServletContext#setAttribute(String, Object)}.
+     * When using this constructor one has to provide required ({@link TracingFilter#TRACER}
+     * attribute in {@link ServletContext#setAttribute(String, Object)}.
      */
     public TracingFilter() {}
 
@@ -90,13 +83,11 @@ public class TracingFilter implements Filter {
      *
      * @param tracer tracer
      * @param spanDecorators decorators
-     * @param tracingDecision tracing decision
      */
-    public TracingFilter(Tracer tracer, List<SpanDecorator> spanDecorators, TracingDecision tracingDecision) {
+    public TracingFilter(Tracer tracer, List<SpanDecorator> spanDecorators) {
         this.tracer = tracer;
         this.spanDecorators = new ArrayList<>(spanDecorators);
         this.spanDecorators.removeAll(Collections.singleton(null));
-        this.tracingDecision = tracingDecision;
     }
 
     @Override
@@ -121,10 +112,6 @@ public class TracingFilter implements Filter {
             }
             this.tracer = (Tracer)contextAttribute;
 
-            this.tracingDecision = (TracingDecision)servletContext.getAttribute(TRACING_DECISION);
-            if (this.tracingDecision == null) {
-                this.tracingDecision = TracingDecision.TRACE_ALL;
-            }
             this.spanDecorators = (List<SpanDecorator>)servletContext.getAttribute(SPAN_DECORATORS);
             if (this.spanDecorators == null) {
                 this.spanDecorators = Arrays.asList(SpanDecorator.STANDARD_TAGS);
@@ -150,7 +137,7 @@ public class TracingFilter implements Filter {
          */
         if (servletRequest.getAttribute(ACTIVE_SPAN) != null) {
             chain.doFilter(servletRequest, servletResponse);
-        } else if (tracingDecision.isTraced(httpRequest, httpResponse)){
+        } else if (isTraced(httpRequest, httpResponse)){
             SpanContext extractedContext = tracer.extract(Format.Builtin.HTTP_HEADERS,
                     new HttpServletRequestExtractAdapter(httpRequest));
 
@@ -185,5 +172,16 @@ public class TracingFilter implements Filter {
     @Override
     public void destroy() {
         this.filterConfig = null;
+    }
+
+    /**
+     * It checks whether a request should be traced or not.
+     *
+     * @param httpServletRequest request
+     * @param httpServletResponse response
+     * @return whether request should be traced or not
+     */
+    protected boolean isTraced(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
+        return true;
     }
 }
