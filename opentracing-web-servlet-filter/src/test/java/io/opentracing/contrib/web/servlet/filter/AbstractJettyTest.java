@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.EnumSet;
 
+import javax.servlet.AsyncContext;
 import javax.servlet.DispatcherType;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -45,8 +46,14 @@ public abstract class AbstractJettyTest {
         ServletContextHandler servletContext = new ServletContextHandler();
         servletContext.setContextPath("/");
         servletContext.addServlet(TestServlet.class, "/hello");
+        servletContext.addServlet(AsyncServlet.class, "/async")
+                .setAsyncSupported(true);
+        servletContext.addServlet(AsyncImmediateExitServlet.class, "/asyncImmediateExit")
+                .setAsyncSupported(true);
+
         servletContext.addServlet(new ServletHolder(new LocalSpanServlet(mockTracer)), "/localSpan");
         servletContext.addServlet(ExceptionServlet.class, "/servletException");
+
 
         servletContext.addFilter(new FilterHolder(tracingFilter()), "/*", EnumSet.of(DispatcherType.REQUEST,
                 DispatcherType.FORWARD, DispatcherType.ASYNC, DispatcherType.ERROR, DispatcherType.INCLUDE));
@@ -109,6 +116,46 @@ public abstract class AbstractJettyTest {
         public void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
             throw new ServletException(EXCEPTION_MESSAGE);
+        }
+    }
+
+    public static class AsyncServlet extends HttpServlet {
+
+        public static int ASYNC_SLEEP_TIME_MS = 250;
+
+        @Override
+        public void doGet(HttpServletRequest request, HttpServletResponse response)
+                throws ServletException, IOException {
+
+            final AsyncContext asyncContext = request.startAsync(request, response);
+
+            asyncContext.start(new Runnable() {
+                @Override
+                public void run() {
+                    HttpServletResponse asyncResponse = (HttpServletResponse) asyncContext.getResponse();
+                    try {
+                        Thread.sleep(ASYNC_SLEEP_TIME_MS);
+                        asyncResponse.setStatus(204);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        asyncResponse.setStatus(500);
+                    } finally {
+                        asyncContext.complete();
+                    }
+                }
+            });
+        }
+    }
+
+    public static class AsyncImmediateExitServlet extends HttpServlet {
+
+        @Override
+        public void doGet(HttpServletRequest request, HttpServletResponse response)
+                throws ServletException, IOException {
+
+            final AsyncContext asyncContext = request.startAsync(request, response);
+            response.setStatus(204);
+            asyncContext.complete();
         }
     }
 
