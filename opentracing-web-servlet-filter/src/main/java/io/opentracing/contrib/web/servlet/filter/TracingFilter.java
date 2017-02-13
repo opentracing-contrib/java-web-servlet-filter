@@ -7,6 +7,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
+import javax.servlet.AsyncEvent;
+import javax.servlet.AsyncListener;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -68,12 +70,12 @@ public class TracingFilter implements Filter {
      */
     public static final String SERVER_SPAN_CONTEXT = TracingFilter.class.getName() + ".activeSpanContext";
     /**
-     * Key of {@link HttpServletRequest#setAttribute(String, Object)} with injected server span.
+     * Key of {@link HttpServletRequest#setAttribute(String, Object)} with injected span wrapper.
      *
      * <p>This is meant to be used only in higher layers like Spring interceptor to add more data to the span.
      * <p>Do not use this as local span to trace business logic, instead use {@link #SERVER_SPAN_CONTEXT}.
      */
-    public static final String SERVER_SPAN = TracingFilter.class.getName() + ".activeServerSpan";
+    public static final String SERVER_SPAN_WRAPPER = TracingFilter.class.getName() + ".activeServerSpan";
 
     private FilterConfig filterConfig;
     private boolean skipFilter;
@@ -141,7 +143,7 @@ public class TracingFilter implements Filter {
         HttpServletResponse httpResponse = (HttpServletResponse) servletResponse;
 
         /**
-         * Check if request has been already traced do not proceed.
+         * If request is traced then do not start new span.
          */
         if (servletRequest.getAttribute(SERVER_SPAN_CONTEXT) != null) {
             chain.doFilter(servletRequest, servletResponse);
@@ -149,12 +151,13 @@ public class TracingFilter implements Filter {
             SpanContext extractedContext = tracer.extract(Format.Builtin.HTTP_HEADERS,
                     new HttpServletRequestExtractAdapter(httpRequest));
 
-            Span span = tracer.buildSpan(httpRequest.getMethod())
+            final Span span = tracer.buildSpan(httpRequest.getMethod())
                     .asChildOf(extractedContext)
                     .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER)
                     .start();
 
-            httpRequest.setAttribute(SERVER_SPAN, span);
+            final SpanWrapper spanWrapper = new SpanWrapper(span);
+            httpRequest.setAttribute(SERVER_SPAN_WRAPPER, spanWrapper);
             httpRequest.setAttribute(SERVER_SPAN_CONTEXT, span.context());
 
             for (SpanDecorator spanDecorator: spanDecorators) {
@@ -163,8 +166,10 @@ public class TracingFilter implements Filter {
 
             try {
                 chain.doFilter(servletRequest, servletResponse);
-                for (SpanDecorator spanDecorator: spanDecorators) {
-                    spanDecorator.onResponse(httpRequest, httpResponse, span);
+                if (!httpRequest.isAsyncStarted()) {
+                    for (SpanDecorator spanDecorator : spanDecorators) {
+                        spanDecorator.onResponse(httpRequest, httpResponse, span);
+                    }
                 }
                 // catch all exceptions (e.g. RuntimeException, ServletException...)
             } catch (Throwable ex) {
@@ -173,7 +178,45 @@ public class TracingFilter implements Filter {
                 }
                 throw ex;
             } finally {
-                span.finish();
+                if (httpRequest.isAsyncStarted()) {
+                    // what if async is already finished? This would not be called
+                    httpRequest.getAsyncContext()
+                            .addListener(new AsyncListener() {
+                        @Override
+                        public void onComplete(AsyncEvent event) throws IOException {
+                            for (SpanDecorator spanDecorator: spanDecorators) {
+                                spanDecorator.onResponse((HttpServletRequest) event.getSuppliedRequest(),
+                                        (HttpServletResponse) event.getSuppliedResponse(), span);
+                            }
+                            spanWrapper.finish();
+                        }
+
+                        @Override
+                        public void onTimeout(AsyncEvent event) throws IOException {
+                            for (SpanDecorator spanDecorator: spanDecorators) {
+                                spanDecorator.onTimeout((HttpServletRequest) event.getSuppliedRequest(),
+                                        (HttpServletResponse) event.getSuppliedResponse(),
+                                        event.getAsyncContext().getTimeout(), span);
+                            }
+                            spanWrapper.finish();
+                        }
+
+                        @Override
+                        public void onError(AsyncEvent event) throws IOException {
+                            for (SpanDecorator spanDecorator: spanDecorators) {
+                                spanDecorator.onError((HttpServletRequest) event.getSuppliedRequest(),
+                                        (HttpServletResponse) event.getSuppliedResponse(), event.getThrowable(), span);
+                            }
+                            spanWrapper.finish();
+                        }
+
+                        @Override
+                        public void onStartAsync(AsyncEvent event) throws IOException {
+                        }
+                    });
+                } else {
+                    spanWrapper.finish();
+                }
             }
         }
     }

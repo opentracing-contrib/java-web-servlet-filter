@@ -4,9 +4,13 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
+import org.hamcrest.core.IsEqual;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.jayway.awaitility.Awaitility;
 
 import io.opentracing.mock.MockSpan;
 import io.opentracing.propagation.Format;
@@ -30,6 +34,7 @@ public class TracingFilterTest extends AbstractJettyTest {
                     .build();
 
             client.newCall(request).execute();
+            Awaitility.await().until(reportedSpansSize(), IsEqual.equalTo(1));
         }
 
         List<MockSpan> mockSpans = mockTracer.finishedSpans();
@@ -55,6 +60,7 @@ public class TracingFilterTest extends AbstractJettyTest {
                     .build();
 
             client.newCall(request).execute();
+            Awaitility.await().until(reportedSpansSize(), IsEqual.equalTo(2));
         }
 
         List<MockSpan> mockSpans = mockTracer.finishedSpans();
@@ -74,6 +80,7 @@ public class TracingFilterTest extends AbstractJettyTest {
                     .build();
 
             client.newCall(request).execute();
+            Awaitility.await().until(reportedSpansSize(), IsEqual.equalTo(1));
         }
 
         List<MockSpan> mockSpans = mockTracer.finishedSpans();
@@ -99,6 +106,7 @@ public class TracingFilterTest extends AbstractJettyTest {
                     .build();
 
             client.newCall(request).execute();
+            Awaitility.await().until(reportedSpansSize(), IsEqual.equalTo(1));
         }
 
         List<MockSpan> mockSpans = mockTracer.finishedSpans();
@@ -131,6 +139,7 @@ public class TracingFilterTest extends AbstractJettyTest {
                     .build();
 
             client.newCall(request).execute();
+            Awaitility.await().until(reportedSpansSize(), IsEqual.equalTo(1));
         }
 
         List<MockSpan> mockSpans = mockTracer.finishedSpans();
@@ -168,6 +177,7 @@ public class TracingFilterTest extends AbstractJettyTest {
                     .build();
 
             client.newCall(request).execute();
+            Awaitility.await().until(reportedSpansSize(), IsEqual.equalTo(1));
         }
 
         List<MockSpan> mockSpans = mockTracer.finishedSpans();
@@ -179,9 +189,73 @@ public class TracingFilterTest extends AbstractJettyTest {
         Assert.assertEquals(foo.context().traceId(), mockSpan.context().traceId());
     }
 
+    @Test
+    public void testAsync() throws IOException {
+        {
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .url(localRequestUrl("/async"))
+                    .build();
+
+            client.newCall(request).execute();
+            Awaitility.await().until(reportedSpansSize(), IsEqual.equalTo(1));
+        }
+
+        List<MockSpan> mockSpans = mockTracer.finishedSpans();
+        Assert.assertEquals(1, mockSpans.size());
+        assertOnErrors(mockSpans);
+
+        MockSpan mockSpan = mockSpans.get(0);
+        Assert.assertEquals("GET", mockSpan.operationName());
+        Assert.assertTrue(AsyncServlet.ASYNC_SLEEP_TIME_MS <= mockSpan.finishMicros() - mockSpan.startMicros());
+
+        Assert.assertEquals(5, mockSpan.tags().size());
+        Assert.assertEquals(Tags.SPAN_KIND_SERVER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
+        Assert.assertEquals("GET", mockSpan.tags().get(Tags.HTTP_METHOD.getKey()));
+        Assert.assertEquals(localRequestUrl("/async"), mockSpan.tags().get(Tags.HTTP_URL.getKey()));
+        Assert.assertEquals(204, mockSpan.tags().get(Tags.HTTP_STATUS.getKey()));
+        Assert.assertEquals("java-web-servlet", mockSpan.tags().get(Tags.COMPONENT.getKey()));
+    }
+
+    @Test
+    public void testAsyncImmediateExit() throws IOException {
+        {
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .url(localRequestUrl("/asyncImmediateExit"))
+                    .build();
+
+            client.newCall(request).execute();
+            Awaitility.await().until(reportedSpansSize(), IsEqual.equalTo(1));
+        }
+
+        List<MockSpan> mockSpans = mockTracer.finishedSpans();
+        Assert.assertEquals(1, mockSpans.size());
+        assertOnErrors(mockSpans);
+
+        MockSpan mockSpan = mockSpans.get(0);
+        Assert.assertEquals("GET", mockSpan.operationName());
+
+        Assert.assertEquals(5, mockSpan.tags().size());
+        Assert.assertEquals(Tags.SPAN_KIND_SERVER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
+        Assert.assertEquals("GET", mockSpan.tags().get(Tags.HTTP_METHOD.getKey()));
+        Assert.assertEquals(localRequestUrl("/asyncImmediateExit"), mockSpan.tags().get(Tags.HTTP_URL.getKey()));
+        Assert.assertEquals(204, mockSpan.tags().get(Tags.HTTP_STATUS.getKey()));
+        Assert.assertEquals("java-web-servlet", mockSpan.tags().get(Tags.COMPONENT.getKey()));
+    }
+
     public static void assertOnErrors(List<MockSpan> spans) {
         for (MockSpan mockSpan: spans) {
             Assert.assertEquals(mockSpan.generatedErrors().toString(), 0, mockSpan.generatedErrors().size());
         }
+    }
+
+    Callable<Integer> reportedSpansSize() {
+        return new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                return mockTracer.finishedSpans().size();
+            }
+        };
     }
 }

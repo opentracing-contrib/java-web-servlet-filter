@@ -5,6 +5,7 @@ import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.servlet.AsyncEvent;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
@@ -33,8 +34,8 @@ public interface SpanDecorator {
     void onRequest(HttpServletRequest httpServletRequest, Span span);
 
     /**
-     * Decorate span after {@link javax.servlet.Filter#doFilter(ServletRequest, ServletResponse, FilterChain)} is
-     * called.
+     * Decorate span after {@link javax.servlet.Filter#doFilter(ServletRequest, ServletResponse, FilterChain)}. When it
+     * is an async request this will be called in {@link javax.servlet.AsyncListener#onComplete(AsyncEvent)}.
      *
      * @param httpServletRequest request
      * @param httpServletResponse response
@@ -44,9 +45,8 @@ public interface SpanDecorator {
 
     /**
      * Decorate span when an exception is thrown during processing in
-     * {@link javax.servlet.Filter#doFilter(ServletRequest, ServletResponse, FilterChain)}.
-     * It can be {@link RuntimeException} from {@link javax.servlet.Filter} or any checked exception from
-     * {@link javax.servlet.http.HttpServlet}.
+     * {@link javax.servlet.Filter#doFilter(ServletRequest, ServletResponse, FilterChain)}. This is
+     * also called in {@link javax.servlet.AsyncListener#onError(AsyncEvent)}.
      *
      * @param httpServletRequest request
      * @param exception exception
@@ -54,6 +54,18 @@ public interface SpanDecorator {
      */
     void onError(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
                  Throwable exception, Span span);
+
+    /**
+     * Decorate span on asynchronous request timeout. It is called in
+     * {@link javax.servlet.AsyncListener#onTimeout(AsyncEvent)}.
+     *
+     * @param httpServletRequest request
+     * @param httpServletResponse response
+     * @param timeout timeout
+     * @param span span to decorate
+     */
+    void onTimeout(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
+                 long timeout, Span span);
 
     /**
      * Adds standard tags to span. {@link Tags#HTTP_URL}, {@link Tags#HTTP_STATUS}, {@link Tags#HTTP_METHOD} and
@@ -87,6 +99,17 @@ public interface SpanDecorator {
                 // exception is thrown in filter chain, but status code is incorrect
                 Tags.HTTP_STATUS.set(span, 500);
             }
+        }
+
+        @Override
+        public void onTimeout(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
+                              long timeout, Span span) {
+            Tags.ERROR.set(span, Boolean.TRUE);
+
+            Map<String, Object> timeoutLogs = new HashMap<>();
+            timeoutLogs.put("event", Tags.ERROR.getKey());
+            timeoutLogs.put("message", "timeout");
+            timeoutLogs.put("timeout", timeout);
         }
 
         private Map<String, String> logsForException(Throwable throwable) {
