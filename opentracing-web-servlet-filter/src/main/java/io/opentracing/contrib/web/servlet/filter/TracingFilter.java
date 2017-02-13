@@ -67,6 +67,13 @@ public class TracingFilter implements Filter {
      * Used as a key of {@link HttpServletRequest#setAttribute(String, Object)} to inject server span context
      */
     public static final String SERVER_SPAN_CONTEXT = TracingFilter.class.getName() + ".activeSpanContext";
+    /**
+     * Key of {@link HttpServletRequest#setAttribute(String, Object)} with injected server span.
+     *
+     * <p>This is meant to be used only in higher layers like Spring interceptor to add more data to the span.
+     * <p>Do not use this as local span to trace business logic, instead use {@link #SERVER_SPAN_CONTEXT}.
+     */
+    public static final String SERVER_SPAN = TracingFilter.class.getName() + ".activeServerSpan";
 
     private FilterConfig filterConfig;
     private boolean skipFilter;
@@ -147,6 +154,7 @@ public class TracingFilter implements Filter {
                     .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER)
                     .start();
 
+            httpRequest.setAttribute(SERVER_SPAN, span);
             httpRequest.setAttribute(SERVER_SPAN_CONTEXT, span.context());
 
             for (SpanDecorator spanDecorator: spanDecorators) {
@@ -161,7 +169,7 @@ public class TracingFilter implements Filter {
                 // catch all exceptions (e.g. RuntimeException, ServletException...)
             } catch (Throwable ex) {
                 for (SpanDecorator spanDecorator : spanDecorators) {
-                    spanDecorator.onError(httpRequest, ex, span);
+                    spanDecorator.onError(httpRequest, httpResponse, ex, span);
                 }
                 throw ex;
             } finally {
