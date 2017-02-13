@@ -52,7 +52,8 @@ public interface SpanDecorator {
      * @param exception exception
      * @param span span to decorate
      */
-    void onError(HttpServletRequest httpServletRequest, Throwable exception, Span span);
+    void onError(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
+                 Throwable exception, Span span);
 
     /**
      * Adds standard tags to span. {@link Tags#HTTP_URL}, {@link Tags#HTTP_STATUS}, {@link Tags#HTTP_METHOD} and
@@ -77,16 +78,24 @@ public interface SpanDecorator {
         }
 
         @Override
-        public void onError(HttpServletRequest httpServletRequest, Throwable exception, Span span) {
+        public void onError(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
+                            Throwable exception, Span span) {
             Tags.ERROR.set(span, Boolean.TRUE);
             span.log(logsForException(exception));
+
+            if (httpServletResponse.getStatus() == HttpServletResponse.SC_OK) {
+                // exception is thrown in filter chain, but status code is incorrect
+                Tags.HTTP_STATUS.set(span, 500);
+            }
         }
 
         private Map<String, String> logsForException(Throwable throwable) {
             Map<String, String> errorLog = new HashMap<>(3);
             errorLog.put("event", Tags.ERROR.getKey());
-            if (throwable.getMessage() != null) {
-                errorLog.put("message", throwable.getLocalizedMessage());
+
+            String message = throwable.getCause() != null ? throwable.getCause().getMessage() : throwable.getMessage();
+            if (message != null) {
+                errorLog.put("message", message);
             }
             StringWriter sw = new StringWriter();
             throwable.printStackTrace(new PrintWriter(sw));
