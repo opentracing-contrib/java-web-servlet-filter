@@ -25,7 +25,6 @@ import org.junit.Before;
 
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
-import io.opentracing.mock.HttpHeadersPropagator;
 import io.opentracing.mock.MockTracer;
 
 /**
@@ -41,7 +40,7 @@ public abstract class AbstractJettyTest {
 
     @Before
     public void beforeTest() throws Exception {
-        mockTracer = new MockTracer(new HttpHeadersPropagator());
+        mockTracer = new MockTracer(MockTracer.Propagator.TEXT_MAP);
 
         ServletContextHandler servletContext = new ServletContextHandler();
         servletContext.setContextPath("/");
@@ -95,9 +94,8 @@ public abstract class AbstractJettyTest {
                 throws ServletException, IOException {
 
             SpanContext spanContext = (SpanContext)request.getAttribute(TracingFilter.SERVER_SPAN_CONTEXT);
-            io.opentracing.Tracer.SpanBuilder spanBuilder = tracer.buildSpan("localSpan");
-
-            spanBuilder.asChildOf(spanContext)
+            tracer.buildSpan("localSpan")
+                    .asChildOf(spanContext)
                     .start()
                     .finish();
         }
