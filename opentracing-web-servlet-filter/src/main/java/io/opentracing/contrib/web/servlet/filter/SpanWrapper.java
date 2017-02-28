@@ -5,6 +5,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.servlet.ServletContext;
 
 import io.opentracing.Span;
+import io.opentracing.contrib.spanmanager.DefaultSpanManager;
+import io.opentracing.contrib.spanmanager.SpanManager;
 
 /**
  * This is passed to {@link ServletContext#setAttribute(String, Object)} holding server span.
@@ -17,10 +19,12 @@ import io.opentracing.Span;
 public class SpanWrapper {
 
     private Span span;
+    private SpanManager.ManagedSpan managedSpan;
     private AtomicBoolean finished = new AtomicBoolean();
 
     protected SpanWrapper(Span span) {
         this.span = span;
+        managedSpan = DefaultSpanManager.getInstance().activate(span);
     }
 
     /**
@@ -44,6 +48,7 @@ public class SpanWrapper {
         boolean wasFinished = finished.getAndSet(true);
         if (!wasFinished) {
             span.finish();
+            managedSpan.deactivate();
         }
     }
 }
