@@ -247,12 +247,15 @@ public class TracingFilterTest extends AbstractJettyTest {
 
     @Test
     public void testCurrentSpanRequest() throws IOException {
-        OkHttpClient client = new OkHttpClient();
-        Request request = new Request.Builder()
-                .url(localRequestUrl("/currentSpan"))
-                .build();
+        {
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .url(localRequestUrl("/currentSpan"))
+                    .build();
 
-        client.newCall(request).execute();
+            client.newCall(request).execute();
+            Awaitility.await().until(reportedSpansSize(), IsEqual.equalTo(1));
+        }
 
         List<MockSpan> mockSpans = mockTracer.finishedSpans();
         Assert.assertEquals(1, mockSpans.size());
