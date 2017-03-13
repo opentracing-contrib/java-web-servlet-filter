@@ -26,6 +26,7 @@ import org.junit.Before;
 
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
+import io.opentracing.contrib.spanmanager.DefaultSpanManager;
 import io.opentracing.mock.MockTracer;
 
 /**
@@ -52,8 +53,8 @@ public abstract class AbstractJettyTest {
                 .setAsyncSupported(true);
 
         servletContext.addServlet(new ServletHolder(new LocalSpanServlet(mockTracer)), "/localSpan");
+        servletContext.addServlet(CurrentSpanServlet.class, "/currentSpan");
         servletContext.addServlet(ExceptionServlet.class, "/servletException");
-
 
         servletContext.addFilter(new FilterHolder(tracingFilter()), "/*", EnumSet.of(DispatcherType.REQUEST,
                 DispatcherType.FORWARD, DispatcherType.ASYNC, DispatcherType.ERROR, DispatcherType.INCLUDE));
@@ -105,6 +106,16 @@ public abstract class AbstractJettyTest {
                     .asChildOf(spanContext)
                     .start()
                     .finish();
+        }
+    }
+
+    public static class CurrentSpanServlet extends HttpServlet {
+
+        @Override
+        public void doGet(HttpServletRequest request, HttpServletResponse response)
+                throws ServletException, IOException {
+
+            DefaultSpanManager.getInstance().current().getSpan().setTag("CurrentSpan", true);
         }
     }
 
@@ -182,4 +193,5 @@ public abstract class AbstractJettyTest {
         @Override
         public void destroy() {}
     }
+
 }

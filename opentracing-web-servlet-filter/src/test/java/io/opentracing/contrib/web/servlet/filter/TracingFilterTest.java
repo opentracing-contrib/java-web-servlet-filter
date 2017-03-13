@@ -19,6 +19,7 @@ import io.opentracing.tag.Tags;
 import okhttp3.Headers;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.Response;
 
 /**
  * @author Pavol Loffay
@@ -242,6 +243,26 @@ public class TracingFilterTest extends AbstractJettyTest {
         Assert.assertEquals(localRequestUrl("/asyncImmediateExit"), mockSpan.tags().get(Tags.HTTP_URL.getKey()));
         Assert.assertEquals(204, mockSpan.tags().get(Tags.HTTP_STATUS.getKey()));
         Assert.assertEquals("java-web-servlet", mockSpan.tags().get(Tags.COMPONENT.getKey()));
+    }
+
+    @Test
+    public void testCurrentSpanRequest() throws IOException {
+        {
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .url(localRequestUrl("/currentSpan"))
+                    .build();
+
+            client.newCall(request).execute();
+            Awaitility.await().until(reportedSpansSize(), IsEqual.equalTo(1));
+        }
+
+        List<MockSpan> mockSpans = mockTracer.finishedSpans();
+        Assert.assertEquals(1, mockSpans.size());
+        assertOnErrors(mockSpans);
+
+        MockSpan mockSpan = mockSpans.get(0);
+        Assert.assertTrue((boolean)mockSpan.tags().get("CurrentSpan"));
     }
 
     public static void assertOnErrors(List<MockSpan> spans) {
