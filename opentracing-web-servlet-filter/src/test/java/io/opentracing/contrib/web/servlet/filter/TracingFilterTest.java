@@ -252,8 +252,14 @@ public class TracingFilterTest extends AbstractJettyTest {
                 .url(localRequestUrl("/currentSpan"))
                 .build();
 
-        Response response = client.newCall(request).execute();
-        Assert.assertEquals(204, response.code());
+        client.newCall(request).execute();
+
+        List<MockSpan> mockSpans = mockTracer.finishedSpans();
+        Assert.assertEquals(1, mockSpans.size());
+        assertOnErrors(mockSpans);
+
+        MockSpan mockSpan = mockSpans.get(0);
+        Assert.assertTrue((boolean)mockSpan.tags().get("CurrentSpan"));
     }
 
     public static void assertOnErrors(List<MockSpan> spans) {

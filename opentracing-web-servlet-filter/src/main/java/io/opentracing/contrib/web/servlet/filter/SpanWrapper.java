@@ -18,12 +18,10 @@ import io.opentracing.contrib.spanmanager.SpanManager;
  */
 public class SpanWrapper {
 
-    private Span span;
     private SpanManager.ManagedSpan managedSpan;
     private AtomicBoolean finished = new AtomicBoolean();
 
     protected SpanWrapper(Span span) {
-        this.span = span;
         managedSpan = DefaultSpanManager.getInstance().activate(span);
     }
 
@@ -31,7 +29,7 @@ public class SpanWrapper {
      * @return server span
      */
     public Span get() {
-        return span;
+        return managedSpan.getSpan();
     }
 
     /**
@@ -45,9 +43,8 @@ public class SpanWrapper {
      * Idempotent finish
      */
     protected void finish() {
-        boolean wasFinished = finished.getAndSet(true);
-        if (!wasFinished) {
-            span.finish();
+        if (finished.compareAndSet(false,true)) {
+            managedSpan.getSpan().finish();
             managedSpan.deactivate();
         }
     }
