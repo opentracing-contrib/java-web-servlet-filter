@@ -34,7 +34,7 @@ import io.opentracing.tag.Tags;
  *
  * <pre>
  * {@code
-  * TracingFilter filter = new TracingFilter(tracer, Arrays.asList(SpanDecorator.STANDARD_TAGS))
+  * TracingFilter filter = new TracingFilter(tracer);
  *  servletContext.addFilter("tracingFilter", filter);
   * }
  * </pre>
@@ -43,7 +43,8 @@ import io.opentracing.tag.Tags;
  * <pre>
  * {@code
  *  servletContext.setAttribute({@link TracingFilter#TRACER}, tracer);
- *  servletContext.setAttribute({@link TracingFilter#SPAN_DECORATORS}, decorators); // optional, if no present SpanDecorator.STANDARD_TAGS is applied
+ *  servletContext.setAttribute({@link TracingFilter#SPAN_DECORATORS}, decorators); // optional, if no present
+ *  ServletFilterSpanDecorator.STANDARD_TAGS is applied
  * }
  * </pre>
  *
