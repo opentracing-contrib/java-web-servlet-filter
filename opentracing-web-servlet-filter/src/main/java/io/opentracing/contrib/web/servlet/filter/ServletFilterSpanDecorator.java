@@ -21,7 +21,7 @@ import io.opentracing.tag.Tags;
  *
  * @author Pavol Loffay
  */
-public interface SpanDecorator {
+public interface ServletFilterSpanDecorator {
 
     /**
      * Decorate span before {@link javax.servlet.Filter#doFilter(ServletRequest, ServletResponse, FilterChain)} is
@@ -73,7 +73,7 @@ public interface SpanDecorator {
      * {@link javax.servlet.Filter#doFilter(ServletRequest, ServletResponse, FilterChain)} is thrown tag
      * {@link Tags#ERROR} is added and {@link Tags#HTTP_STATUS} not because at this point it is not known.
      */
-    SpanDecorator STANDARD_TAGS = new SpanDecorator() {
+    ServletFilterSpanDecorator STANDARD_TAGS = new ServletFilterSpanDecorator() {
         @Override
         public void onRequest(HttpServletRequest httpServletRequest, Span span) {
             Tags.COMPONENT.set(span, "java-web-servlet");

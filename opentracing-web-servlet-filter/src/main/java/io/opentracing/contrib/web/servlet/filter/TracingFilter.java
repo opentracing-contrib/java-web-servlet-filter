@@ -81,7 +81,7 @@ public class TracingFilter implements Filter {
     private boolean skipFilter;
 
     private Tracer tracer;
-    private List<SpanDecorator> spanDecorators;
+    private List<ServletFilterSpanDecorator> spanDecorators;
 
     /**
      * When using this constructor one has to provide required ({@link TracingFilter#TRACER}
@@ -90,11 +90,18 @@ public class TracingFilter implements Filter {
     public TracingFilter() {}
 
     /**
+     * @param tracer
+     */
+    public TracingFilter(Tracer tracer) {
+        this(tracer, Collections.singletonList(ServletFilterSpanDecorator.STANDARD_TAGS));
+    }
+
+    /**
      *
      * @param tracer tracer
      * @param spanDecorators decorators
      */
-    public TracingFilter(Tracer tracer, List<SpanDecorator> spanDecorators) {
+    public TracingFilter(Tracer tracer, List<ServletFilterSpanDecorator> spanDecorators) {
         this.tracer = tracer;
         this.spanDecorators = new ArrayList<>(spanDecorators);
         this.spanDecorators.removeAll(Collections.singleton(null));
@@ -122,9 +129,9 @@ public class TracingFilter implements Filter {
             }
             this.tracer = (Tracer)contextAttribute;
 
-            this.spanDecorators = (List<SpanDecorator>)servletContext.getAttribute(SPAN_DECORATORS);
+            this.spanDecorators = (List<ServletFilterSpanDecorator>)servletContext.getAttribute(SPAN_DECORATORS);
             if (this.spanDecorators == null) {
-                this.spanDecorators = Arrays.asList(SpanDecorator.STANDARD_TAGS);
+                this.spanDecorators = Arrays.asList(ServletFilterSpanDecorator.STANDARD_TAGS);
             }
             this.spanDecorators.removeAll(Collections.singleton(null));
         }
@@ -160,20 +167,20 @@ public class TracingFilter implements Filter {
             httpRequest.setAttribute(SERVER_SPAN_WRAPPER, spanWrapper);
             httpRequest.setAttribute(SERVER_SPAN_CONTEXT, span.context());
 
-            for (SpanDecorator spanDecorator: spanDecorators) {
+            for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
                 spanDecorator.onRequest(httpRequest, span);
             }
 
             try {
                 chain.doFilter(servletRequest, servletResponse);
                 if (!httpRequest.isAsyncStarted()) {
-                    for (SpanDecorator spanDecorator : spanDecorators) {
+                    for (ServletFilterSpanDecorator spanDecorator : spanDecorators) {
                         spanDecorator.onResponse(httpRequest, httpResponse, span);
                     }
                 }
                 // catch all exceptions (e.g. RuntimeException, ServletException...)
             } catch (Throwable ex) {
-                for (SpanDecorator spanDecorator : spanDecorators) {
+                for (ServletFilterSpanDecorator spanDecorator : spanDecorators) {
                     spanDecorator.onError(httpRequest, httpResponse, ex, span);
                 }
                 throw ex;
@@ -184,7 +191,7 @@ public class TracingFilter implements Filter {
                             .addListener(new AsyncListener() {
                         @Override
                         public void onComplete(AsyncEvent event) throws IOException {
-                            for (SpanDecorator spanDecorator: spanDecorators) {
+                            for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
                                 spanDecorator.onResponse((HttpServletRequest) event.getSuppliedRequest(),
                                         (HttpServletResponse) event.getSuppliedResponse(), span);
                             }
@@ -193,7 +200,7 @@ public class TracingFilter implements Filter {
 
                         @Override
                         public void onTimeout(AsyncEvent event) throws IOException {
-                            for (SpanDecorator spanDecorator: spanDecorators) {
+                            for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
                                 spanDecorator.onTimeout((HttpServletRequest) event.getSuppliedRequest(),
                                         (HttpServletResponse) event.getSuppliedResponse(),
                                         event.getAsyncContext().getTimeout(), span);
@@ -203,7 +210,7 @@ public class TracingFilter implements Filter {
 
                         @Override
                         public void onError(AsyncEvent event) throws IOException {
-                            for (SpanDecorator spanDecorator: spanDecorators) {
+                            for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
                                 spanDecorator.onError((HttpServletRequest) event.getSuppliedRequest(),
                                         (HttpServletResponse) event.getSuppliedResponse(), event.getThrowable(), span);
                             }
