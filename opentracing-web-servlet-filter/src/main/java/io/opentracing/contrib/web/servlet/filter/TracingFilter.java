@@ -44,7 +44,7 @@ import io.opentracing.util.GlobalTracer;
  * <pre>
  * {@code
  *  GlobalTracer.register(tracer);
- *  servletContext.setAttribute({@link TracingFilter#SPAN_DECORATORS}, decorators); // optional, if no present ServletFilterSpanDecorator.STANDARD_TAGS is applied
+ *  servletContext.setAttribute({@link TracingFilter#SPAN_DECORATORS}, listOfDecorators); // optional, if no present ServletFilterSpanDecorator.STANDARD_TAGS is applied
  * }
  * </pre>
  *
@@ -111,11 +111,13 @@ public class TracingFilter implements Filter {
 
         // use decorators from context attributes
         Object decoratorsAttribute = servletContext.getAttribute(SPAN_DECORATORS);
-        if (decoratorsAttribute != null && !(decoratorsAttribute instanceof Collection)) {
+        if (decoratorsAttribute != null && decoratorsAttribute instanceof Collection) {
             List<ServletFilterSpanDecorator> decorators = new ArrayList<>();
             for (Object decorator: (Collection)decoratorsAttribute) {
                 if (decorator instanceof ServletFilterSpanDecorator) {
                     decorators.add((ServletFilterSpanDecorator) decorator);
+                } else {
+                    log.severe(decorator + " is not an instance of " + ServletFilterSpanDecorator.class);
                 }
             }
             this.spanDecorators = decorators.size() > 0 ? decorators : this.spanDecorators;
