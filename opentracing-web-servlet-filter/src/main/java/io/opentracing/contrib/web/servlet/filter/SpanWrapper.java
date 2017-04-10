@@ -18,11 +18,21 @@ import io.opentracing.contrib.spanmanager.SpanManager;
  */
 public class SpanWrapper {
 
-    private SpanManager.ManagedSpan managedSpan;
-    private AtomicBoolean finished = new AtomicBoolean();
+    private final SpanManager.ManagedSpan managedSpan;
+    private final AtomicBoolean finished = new AtomicBoolean();
 
+    /**
+     * @param span server span or null when request is not being traced
+     */
     protected SpanWrapper(Span span) {
         managedSpan = DefaultSpanManager.getInstance().activate(span);
+    }
+
+    /**
+     * @return whether request is being traced or not
+     */
+    public boolean isTraced() {
+        return managedSpan != null;
     }
 
     /**
@@ -43,7 +53,7 @@ public class SpanWrapper {
      * Idempotent finish
      */
     protected void finish() {
-        if (finished.compareAndSet(false,true)) {
+        if (managedSpan != null && finished.compareAndSet(false,true)) {
             managedSpan.getSpan().finish();
             managedSpan.deactivate();
         }

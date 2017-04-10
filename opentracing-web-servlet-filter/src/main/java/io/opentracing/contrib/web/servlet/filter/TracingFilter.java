@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import javax.servlet.AsyncEvent;
 import javax.servlet.AsyncListener;
@@ -74,10 +75,10 @@ public class TracingFilter implements Filter {
     public static final String SERVER_SPAN_WRAPPER = TracingFilter.class.getName() + ".activeServerSpan";
 
     private FilterConfig filterConfig;
-    private boolean skipFilter;
 
     private Tracer tracer;
     private List<ServletFilterSpanDecorator> spanDecorators;
+    private Pattern skipPattern;
 
     /**
      * Tracer instance has to be registered with {@link GlobalTracer#register(Tracer)}.
@@ -90,17 +91,19 @@ public class TracingFilter implements Filter {
      * @param tracer
      */
     public TracingFilter(Tracer tracer) {
-        this(tracer, Collections.singletonList(ServletFilterSpanDecorator.STANDARD_TAGS));
+        this(tracer, Collections.singletonList(ServletFilterSpanDecorator.STANDARD_TAGS), null);
     }
 
     /**
      *
      * @param tracer tracer
      * @param spanDecorators decorators
+     * @param skipPattern null or pattern to exclude certain paths from tracing
      */
-    public TracingFilter(Tracer tracer, List<ServletFilterSpanDecorator> spanDecorators) {
+    public TracingFilter(Tracer tracer, List<ServletFilterSpanDecorator> spanDecorators, Pattern skipPattern) {
         this.tracer = tracer;
         this.spanDecorators = new ArrayList<>(spanDecorators);
+        this.skipPattern = skipPattern;
         this.spanDecorators.removeAll(Collections.singleton(null));
     }
 
@@ -128,20 +131,21 @@ public class TracingFilter implements Filter {
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain chain)
             throws IOException, ServletException {
 
-        if (skipFilter) {
-            chain.doFilter(servletRequest, servletResponse);
-            return;
-        }
-
         HttpServletRequest httpRequest = (HttpServletRequest) servletRequest;
         HttpServletResponse httpResponse = (HttpServletResponse) servletResponse;
+
+        if (isNotTraced(httpRequest, httpResponse)) {
+            httpRequest.setAttribute(SERVER_SPAN_WRAPPER, new SpanWrapper(null));
+            chain.doFilter(httpRequest, httpResponse);
+            return;
+        }
 
         /**
          * If request is traced then do not start new span.
          */
         if (servletRequest.getAttribute(SERVER_SPAN_CONTEXT) != null) {
             chain.doFilter(servletRequest, servletResponse);
-        } else if (isTraced(httpRequest, httpResponse)){
+        } else {
             SpanContext extractedContext = tracer.extract(Format.Builtin.HTTP_HEADERS,
                     new HttpServletRequestExtractAdapter(httpRequest));
 
@@ -227,8 +231,13 @@ public class TracingFilter implements Filter {
      * @param httpServletResponse response
      * @return whether request should be traced or not
      */
-    protected boolean isTraced(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
-        return true;
+    protected boolean isNotTraced(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
+        if (skipPattern != null) {
+            String url = httpServletRequest.getRequestURI().substring(httpServletRequest.getContextPath().length());
+            return skipPattern.matcher(url).matches();
+        }
+
+        return false;
     }
 
     /**
