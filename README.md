@@ -12,16 +12,10 @@ Tracing filter can be programmatically initialized:
    servletContext.addFilter("tracingFilter", filter);
 ```
 
-or added to `web.xml`, however it requires to add following properties to ServletContext attributes:
-```java
-   servletContext.setAttribute(TracingFilter.TRACER, tracer);
-   servletContext.setAttribute(TracingFilter.SPAN_DECORATORS, decorators); // optional, if no present ServletFilterSpanDecorator.STANDARD_TAGS is applied
-```
-
-* `SpanDecorator` - decorate span (add tags, logs, change span operation name).
+or added to `web.xml`, however it requires to register a tracer instance: `GlobalTracer.register(tracer)`.
 
 ## Accessing Server Span
-Current server span is accessible in HttpServletRequest attributes.
+Current server span context is accessible in HttpServletRequest attributes.
 ```java
    SpanContext spanContext = (SpanContext)httpservletRequest.getAttribute(TracingFilter.SERVER_SPAN_CONTEXT);
    
