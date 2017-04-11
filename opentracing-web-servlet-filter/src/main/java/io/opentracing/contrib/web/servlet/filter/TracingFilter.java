@@ -62,6 +62,10 @@ public class TracingFilter implements Filter {
      */
     public static final String SPAN_DECORATORS = TracingFilter.class.getName() + ".spanDecorators";
     /**
+     * Use as a key of {@link ServletContext#setAttribute(String, Object)} to skip pattern
+     */
+    public static final String SKIP_PATTERN = TracingFilter.class.getName() + ".skipPattern";
+
     /**
      * Used as a key of {@link HttpServletRequest#setAttribute(String, Object)} to inject server span context
      */
@@ -103,8 +107,8 @@ public class TracingFilter implements Filter {
     public TracingFilter(Tracer tracer, List<ServletFilterSpanDecorator> spanDecorators, Pattern skipPattern) {
         this.tracer = tracer;
         this.spanDecorators = new ArrayList<>(spanDecorators);
-        this.skipPattern = skipPattern;
         this.spanDecorators.removeAll(Collections.singleton(null));
+        this.skipPattern = skipPattern;
     }
 
     @Override
@@ -113,10 +117,10 @@ public class TracingFilter implements Filter {
         ServletContext servletContext = filterConfig.getServletContext();
 
         // use decorators from context attributes
-        Object decoratorsAttribute = servletContext.getAttribute(SPAN_DECORATORS);
-        if (decoratorsAttribute != null && decoratorsAttribute instanceof Collection) {
+        Object contextAttribute = servletContext.getAttribute(SPAN_DECORATORS);
+        if (contextAttribute instanceof Collection) {
             List<ServletFilterSpanDecorator> decorators = new ArrayList<>();
-            for (Object decorator: (Collection)decoratorsAttribute) {
+            for (Object decorator: (Collection)contextAttribute) {
                 if (decorator instanceof ServletFilterSpanDecorator) {
                     decorators.add((ServletFilterSpanDecorator) decorator);
                 } else {
@@ -124,6 +128,11 @@ public class TracingFilter implements Filter {
                 }
             }
             this.spanDecorators = decorators.size() > 0 ? decorators : this.spanDecorators;
+        }
+
+        contextAttribute = servletContext.getAttribute(SKIP_PATTERN);
+        if (contextAttribute instanceof Pattern) {
+            skipPattern = (Pattern) contextAttribute;
         }
     }
 
