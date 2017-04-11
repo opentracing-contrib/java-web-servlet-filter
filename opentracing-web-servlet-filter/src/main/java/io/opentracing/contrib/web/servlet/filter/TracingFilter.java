@@ -98,7 +98,7 @@ public class TracingFilter implements Filter {
      *
      * @param tracer tracer
      * @param spanDecorators decorators
-     * @param skipPattern null or pattern to exclude certain paths from tracing
+     * @param skipPattern null or pattern to exclude certain paths from tracing e.g. "/health"
      */
     public TracingFilter(Tracer tracer, List<ServletFilterSpanDecorator> spanDecorators, Pattern skipPattern) {
         this.tracer = tracer;
@@ -232,6 +232,7 @@ public class TracingFilter implements Filter {
      * @return whether request should be traced or not
      */
     protected boolean isNotTraced(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
+        // skip URLs matching skip pattern
         if (skipPattern != null) {
             String url = httpServletRequest.getRequestURI().substring(httpServletRequest.getContextPath().length());
             return skipPattern.matcher(url).matches();

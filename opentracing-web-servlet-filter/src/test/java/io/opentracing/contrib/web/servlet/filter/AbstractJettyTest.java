@@ -3,6 +3,7 @@ package io.opentracing.contrib.web.servlet.filter;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.regex.Pattern;
 
 import javax.servlet.AsyncContext;
 import javax.servlet.DispatcherType;
@@ -36,7 +37,7 @@ public abstract class AbstractJettyTest {
 
     // jetty starts on a random port
     private int serverPort;
-    protected String contextPath = "/";
+    protected String contextPath = "/context";
 
     protected Server jettyServer;
     protected MockTracer mockTracer;
@@ -75,7 +76,7 @@ public abstract class AbstractJettyTest {
 
     protected Filter tracingFilter() {
         return new TracingFilter(mockTracer, Collections.singletonList(ServletFilterSpanDecorator.STANDARD_TAGS),
-                null);
+                Pattern.compile("/health"));
     }
 
     public String localRequestUrl(String path) {

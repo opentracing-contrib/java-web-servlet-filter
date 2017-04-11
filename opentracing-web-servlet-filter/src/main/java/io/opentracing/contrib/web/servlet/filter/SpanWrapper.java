@@ -32,7 +32,7 @@ public class SpanWrapper {
      * @return whether request is being traced or not
      */
     public boolean isTraced() {
-        return managedSpan != null;
+        return managedSpan.getSpan() != null;
     }
 
     /**
@@ -53,7 +53,7 @@ public class SpanWrapper {
      * Idempotent finish
      */
     protected void finish() {
-        if (managedSpan != null && finished.compareAndSet(false,true)) {
+        if (managedSpan.getSpan() != null && finished.compareAndSet(false,true)) {
             managedSpan.getSpan().finish();
             managedSpan.deactivate();
         }
