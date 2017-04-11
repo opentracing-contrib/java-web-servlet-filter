@@ -143,7 +143,7 @@ public class TracingFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) servletRequest;
         HttpServletResponse httpResponse = (HttpServletResponse) servletResponse;
 
-        if (isNotTraced(httpRequest, httpResponse)) {
+        if (!isTraced(httpRequest, httpResponse)) {
             httpRequest.setAttribute(SERVER_SPAN_WRAPPER, new SpanWrapper(null));
             chain.doFilter(httpRequest, httpResponse);
             return;
@@ -240,14 +240,14 @@ public class TracingFilter implements Filter {
      * @param httpServletResponse response
      * @return whether request should be traced or not
      */
-    protected boolean isNotTraced(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
+    protected boolean isTraced(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
         // skip URLs matching skip pattern
         if (skipPattern != null) {
             String url = httpServletRequest.getRequestURI().substring(httpServletRequest.getContextPath().length());
-            return skipPattern.matcher(url).matches();
+            return !skipPattern.matcher(url).matches();
         }
 
-        return false;
+        return true;
     }
 
     /**
