@@ -1,5 +1,9 @@
 package io.opentracing.contrib.web.servlet.filter;
 
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -272,10 +276,9 @@ public class TracingFilterTest extends AbstractJettyTest {
                     .build();
 
             client.newCall(request).execute();
-            // static wait to make sure span is not created
-            Thread.sleep(50);
         }
 
+        verify(mockTracer, never()).buildSpan(anyString());
         Assert.assertTrue(mockTracer.finishedSpans().isEmpty());
     }
 
