@@ -1,8 +1,9 @@
 package io.opentracing.contrib.web.servlet.filter;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.regex.Pattern;
 
 import javax.servlet.AsyncContext;
 import javax.servlet.DispatcherType;
@@ -34,8 +35,9 @@ import io.opentracing.mock.MockTracer;
  */
 public abstract class AbstractJettyTest {
 
-    // jetty starts on random port
+    // jetty starts on a random port
     private int serverPort;
+    protected String contextPath = "/context";
 
     protected Server jettyServer;
     protected MockTracer mockTracer;
@@ -45,7 +47,7 @@ public abstract class AbstractJettyTest {
         mockTracer = new MockTracer(MockTracer.Propagator.TEXT_MAP);
 
         ServletContextHandler servletContext = new ServletContextHandler();
-        servletContext.setContextPath("/");
+        servletContext.setContextPath(contextPath);
         servletContext.addServlet(TestServlet.class, "/hello");
         servletContext.addServlet(AsyncServlet.class, "/async")
                 .setAsyncSupported(true);
@@ -73,11 +75,12 @@ public abstract class AbstractJettyTest {
     }
 
     protected Filter tracingFilter() {
-        return new TracingFilter(mockTracer, Arrays.asList(ServletFilterSpanDecorator.STANDARD_TAGS));
+        return new TracingFilter(mockTracer, Collections.singletonList(ServletFilterSpanDecorator.STANDARD_TAGS),
+                Pattern.compile("/health"));
     }
 
     public String localRequestUrl(String path) {
-        return "http://localhost:" + serverPort + path;
+        return "http://localhost:" + serverPort + ("/".equals(contextPath) ? "" : contextPath) + path;
     }
 
     public static class TestServlet extends HttpServlet {

@@ -6,11 +6,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import org.awaitility.Awaitility;
 import org.hamcrest.core.IsEqual;
 import org.junit.Assert;
 import org.junit.Test;
-
-import com.jayway.awaitility.Awaitility;
 
 import io.opentracing.mock.MockSpan;
 import io.opentracing.propagation.Format;
@@ -19,7 +18,6 @@ import io.opentracing.tag.Tags;
 import okhttp3.Headers;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.Response;
 
 /**
  * @author Pavol Loffay
@@ -263,6 +261,22 @@ public class TracingFilterTest extends AbstractJettyTest {
 
         MockSpan mockSpan = mockSpans.get(0);
         Assert.assertTrue((boolean)mockSpan.tags().get("CurrentSpan"));
+    }
+
+    @Test
+    public void testExcludePattern() throws IOException, InterruptedException {
+        {
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .url(localRequestUrl("/health?foo=4"))
+                    .build();
+
+            client.newCall(request).execute();
+            // static wait to make sure span is not created
+            Thread.sleep(50);
+        }
+
+        Assert.assertTrue(mockTracer.finishedSpans().isEmpty());
     }
 
     public static void assertOnErrors(List<MockSpan> spans) {
