@@ -24,6 +24,7 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.After;
 import org.junit.Before;
+import org.mockito.Mockito;
 
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
@@ -44,7 +45,7 @@ public abstract class AbstractJettyTest {
 
     @Before
     public void beforeTest() throws Exception {
-        mockTracer = new MockTracer(MockTracer.Propagator.TEXT_MAP);
+        mockTracer = Mockito.spy(new MockTracer(MockTracer.Propagator.TEXT_MAP));
 
         ServletContextHandler servletContext = new ServletContextHandler();
         servletContext.setContextPath(contextPath);
