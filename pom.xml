@@ -40,7 +40,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <version.io.opentracing>0.22.0</version.io.opentracing>
-    <version.io.opentracing.contrib.spanmanager>0.0.4</version.io.opentracing.contrib.spanmanager>
+    <version.io.opentracing.contrib.spanmanager>0.0.5</version.io.opentracing.contrib.spanmanager>
     <version.javax.servlet-javax.servlet-api>3.0.1</version.javax.servlet-javax.servlet-api>
     <version.junit>4.12</version.junit>
     <version.org.mockito-mockito-all>1.10.19</version.org.mockito-mockito-all>
