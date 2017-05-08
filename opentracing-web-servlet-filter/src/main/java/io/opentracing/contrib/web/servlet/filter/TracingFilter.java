@@ -158,7 +158,7 @@ public class TracingFilter implements Filter {
             SpanContext extractedContext = tracer.extract(Format.Builtin.HTTP_HEADERS,
                     new HttpServletRequestExtractAdapter(httpRequest));
 
-            final Span span = tracer.buildSpan(httpRequest.getMethod())
+            final Span span = tracer.buildSpan(httpRequest.getRequestURI())
                     .asChildOf(extractedContext)
                     .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER)
                     .start();
