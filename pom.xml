@@ -30,7 +30,7 @@
     <developer>
       <id>pavolloffay</id>
       <name>Pavol Loffay</name>
-      <email>p.loffay@gmail.com</email>
+      <email>ploffay@redhat.com</email>
     </developer>
   </developers>
 
@@ -44,7 +44,7 @@
     <version.javax.servlet-javax.servlet-api>3.0.1</version.javax.servlet-javax.servlet-api>
     <version.junit>4.12</version.junit>
     <version.org.mockito-mockito-all>1.10.19</version.org.mockito-mockito-all>
-    <version.org.awaitility-awaitility>2.0.0</version.org.awaitility-awaitility>
+    <version.org.awaitility-awaitility>3.0.0</version.org.awaitility-awaitility>
 
     <!-- plugins -->
     <version.maven-deploy-plugin>2.8.2</version.maven-deploy-plugin>
