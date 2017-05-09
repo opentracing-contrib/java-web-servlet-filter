@@ -81,7 +81,11 @@ public class HttpServletRequestExtractAdapter implements TextMap {
                 listIterator = mapEntry.getValue().iterator();
             }
 
-            return new AbstractMap.SimpleImmutableEntry<>(mapEntry.getKey(), listIterator.next());
+            if (listIterator.hasNext()) {
+                return new AbstractMap.SimpleImmutableEntry<>(mapEntry.getKey(), listIterator.next());
+            } else {
+                return new AbstractMap.SimpleImmutableEntry<>(mapEntry.getKey(), null);
+            }
         }
 
         @Override

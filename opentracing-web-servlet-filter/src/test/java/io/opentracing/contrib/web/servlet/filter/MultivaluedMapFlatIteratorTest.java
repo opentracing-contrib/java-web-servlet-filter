@@ -28,11 +28,7 @@ public class MultivaluedMapFlatIteratorTest {
         Assert.assertFalse(iterator.hasNext());
     }
 
-    /**
-     * Corner case.
-     * This should not really happen. In this case value should be null or an empty string.
-     */
-    @Test(expected = NoSuchElementException.class)
+    @Test
     public void testEmptyValue() {
         Map<String, List<String>> map = new HashMap<>();
         map.put("key", Collections.<String>emptyList());
@@ -41,7 +37,8 @@ public class MultivaluedMapFlatIteratorTest {
                 HttpServletRequestExtractAdapter.MultivaluedMapFlatIterator<>(map.entrySet());
 
         Assert.assertTrue(iterator.hasNext());
-        iterator.next();
+        Assert.assertEquals(new AbstractMap.SimpleImmutableEntry<>("key", null), iterator.next());
+        Assert.assertFalse(iterator.hasNext());
     }
 
     @Test
