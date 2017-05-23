@@ -39,8 +39,7 @@
     <maven.compiler.target>1.7</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-    <version.io.opentracing>0.22.0</version.io.opentracing>
-    <version.io.opentracing.contrib.spanmanager>0.0.5</version.io.opentracing.contrib.spanmanager>
+    <version.io.opentracing>0.30.1.RC2-SNAPSHOT</version.io.opentracing>
     <version.javax.servlet-javax.servlet-api>3.0.1</version.javax.servlet-javax.servlet-api>
     <version.junit>4.12</version.junit>
     <version.org.mockito-mockito-all>1.10.19</version.org.mockito-mockito-all>
@@ -81,11 +80,6 @@
         <groupId>io.opentracing</groupId>
         <artifactId>opentracing-mock</artifactId>
         <version>${version.io.opentracing}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.opentracing.contrib</groupId>
-        <artifactId>opentracing-spanmanager</artifactId>
-        <version>${version.io.opentracing.contrib.spanmanager}</version>
       </dependency>
 
       <dependency>

@@ -26,10 +26,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.mockito.Mockito;
 
+import io.opentracing.ActiveSpan;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
-import io.opentracing.contrib.spanmanager.DefaultSpanManager;
 import io.opentracing.mock.MockTracer;
+import io.opentracing.util.GlobalTracer;
+import io.opentracing.util.ThreadLocalActiveSpanSource;
 
 /**
  * @author Pavol Loffay
@@ -45,18 +47,20 @@ public abstract class AbstractJettyTest {
 
     @Before
     public void beforeTest() throws Exception {
-        mockTracer = Mockito.spy(new MockTracer(MockTracer.Propagator.TEXT_MAP));
+        mockTracer = Mockito.spy(new MockTracer(new ThreadLocalActiveSpanSource(), MockTracer.Propagator.TEXT_MAP));
 
         ServletContextHandler servletContext = new ServletContextHandler();
         servletContext.setContextPath(contextPath);
         servletContext.addServlet(TestServlet.class, "/hello");
-        servletContext.addServlet(AsyncServlet.class, "/async")
-                .setAsyncSupported(true);
+        
+        ServletHolder asyncServletHolder = new ServletHolder(new AsyncServlet(mockTracer));
+        servletContext.addServlet(asyncServletHolder, "/async");
+        asyncServletHolder.setAsyncSupported(true);
         servletContext.addServlet(AsyncImmediateExitServlet.class, "/asyncImmediateExit")
                 .setAsyncSupported(true);
 
         servletContext.addServlet(new ServletHolder(new LocalSpanServlet(mockTracer)), "/localSpan");
-        servletContext.addServlet(CurrentSpanServlet.class, "/currentSpan");
+        servletContext.addServlet(new ServletHolder(new CurrentSpanServlet(mockTracer)), "/currentSpan");
         servletContext.addServlet(ExceptionServlet.class, "/servletException");
 
         servletContext.addFilter(new FilterHolder(tracingFilter()), "/*", EnumSet.of(DispatcherType.REQUEST,
@@ -108,18 +112,24 @@ public abstract class AbstractJettyTest {
             SpanContext spanContext = (SpanContext)request.getAttribute(TracingFilter.SERVER_SPAN_CONTEXT);
             tracer.buildSpan("localSpan")
                     .asChildOf(spanContext)
-                    .start()
+                    .startManual()
                     .finish();
         }
     }
 
     public static class CurrentSpanServlet extends HttpServlet {
 
+        private io.opentracing.Tracer tracer;
+
+        public CurrentSpanServlet(Tracer tracer) {
+            this.tracer = tracer;
+        }
+
         @Override
         public void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
 
-            DefaultSpanManager.getInstance().current().getSpan().setTag("CurrentSpan", true);
+            tracer.activeSpan().setTag("CurrentSpan", true);
         }
     }
 
@@ -138,24 +148,35 @@ public abstract class AbstractJettyTest {
 
         public static int ASYNC_SLEEP_TIME_MS = 250;
 
+        private io.opentracing.Tracer tracer;
+
+        public AsyncServlet(Tracer tracer) {
+            this.tracer = tracer;
+        }
+
         @Override
         public void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
 
             final AsyncContext asyncContext = request.startAsync(request, response);
 
+            // TODO: This could be avoided by using an OpenTracing aware Runnable (when available)
+            final ActiveSpan.Continuation cont = tracer.activeSpan().capture();
+
             asyncContext.start(new Runnable() {
                 @Override
                 public void run() {
                     HttpServletResponse asyncResponse = (HttpServletResponse) asyncContext.getResponse();
-                    try {
-                        Thread.sleep(ASYNC_SLEEP_TIME_MS);
-                        asyncResponse.setStatus(204);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                        asyncResponse.setStatus(500);
-                    } finally {
-                        asyncContext.complete();
+                    try (ActiveSpan activeSpan = cont.activate()) {
+                        try {
+                            Thread.sleep(ASYNC_SLEEP_TIME_MS);
+                            asyncResponse.setStatus(204);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                            asyncResponse.setStatus(500);
+                        } finally {
+                            asyncContext.complete();
+                        }
                     }
                 }
             });
