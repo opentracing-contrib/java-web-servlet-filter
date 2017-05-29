@@ -20,6 +20,7 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import io.opentracing.ActiveSpan;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
@@ -70,13 +71,6 @@ public class TracingFilter implements Filter {
      * Used as a key of {@link HttpServletRequest#setAttribute(String, Object)} to inject server span context
      */
     public static final String SERVER_SPAN_CONTEXT = TracingFilter.class.getName() + ".activeSpanContext";
-    /**
-     * Key of {@link HttpServletRequest#setAttribute(String, Object)} with injected span wrapper.
-     *
-     * <p>This is meant to be used only in higher layers like Spring interceptor to add more data to the span.
-     * <p>Do not use this as local span to trace business logic, instead use {@link #SERVER_SPAN_CONTEXT}.
-     */
-    public static final String SERVER_SPAN_WRAPPER = TracingFilter.class.getName() + ".activeServerSpan";
 
     private FilterConfig filterConfig;
 
@@ -144,7 +138,6 @@ public class TracingFilter implements Filter {
         HttpServletResponse httpResponse = (HttpServletResponse) servletResponse;
 
         if (!isTraced(httpRequest, httpResponse)) {
-            httpRequest.setAttribute(SERVER_SPAN_WRAPPER, new SpanWrapper(null));
             chain.doFilter(httpRequest, httpResponse);
             return;
         }
@@ -158,13 +151,11 @@ public class TracingFilter implements Filter {
             SpanContext extractedContext = tracer.extract(Format.Builtin.HTTP_HEADERS,
                     new HttpServletRequestExtractAdapter(httpRequest));
 
-            final Span span = tracer.buildSpan(httpRequest.getMethod())
+            final ActiveSpan span = tracer.buildSpan(httpRequest.getMethod())
                     .asChildOf(extractedContext)
                     .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER)
-                    .start();
+                    .startActive();
 
-            final SpanWrapper spanWrapper = new SpanWrapper(span);
-            httpRequest.setAttribute(SERVER_SPAN_WRAPPER, spanWrapper);
             httpRequest.setAttribute(SERVER_SPAN_CONTEXT, span.context());
 
             for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
@@ -186,44 +177,47 @@ public class TracingFilter implements Filter {
                 throw ex;
             } finally {
                 if (httpRequest.isAsyncStarted()) {
+                    final ActiveSpan.Continuation cont = span.capture();
                     // what if async is already finished? This would not be called
                     httpRequest.getAsyncContext()
                             .addListener(new AsyncListener() {
                         @Override
                         public void onComplete(AsyncEvent event) throws IOException {
-                            for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
-                                spanDecorator.onResponse((HttpServletRequest) event.getSuppliedRequest(),
-                                        (HttpServletResponse) event.getSuppliedResponse(), span);
+                            try (ActiveSpan activeSpan = cont.activate()) {
+                                for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
+                                    spanDecorator.onResponse((HttpServletRequest) event.getSuppliedRequest(),
+                                            (HttpServletResponse) event.getSuppliedResponse(), span);
+                                }
                             }
-                            spanWrapper.finish();
                         }
 
                         @Override
                         public void onTimeout(AsyncEvent event) throws IOException {
-                            for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
-                                spanDecorator.onTimeout((HttpServletRequest) event.getSuppliedRequest(),
-                                        (HttpServletResponse) event.getSuppliedResponse(),
-                                        event.getAsyncContext().getTimeout(), span);
+                            try (ActiveSpan activeSpan = cont.activate()) {
+                                for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
+                                    spanDecorator.onTimeout((HttpServletRequest) event.getSuppliedRequest(),
+                                            (HttpServletResponse) event.getSuppliedResponse(),
+                                            event.getAsyncContext().getTimeout(), span);
+                                }
                             }
-                            spanWrapper.finish();
                         }
 
                         @Override
                         public void onError(AsyncEvent event) throws IOException {
-                            for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
-                                spanDecorator.onError((HttpServletRequest) event.getSuppliedRequest(),
-                                        (HttpServletResponse) event.getSuppliedResponse(), event.getThrowable(), span);
+                            try (ActiveSpan activeSpan = cont.activate()) {
+                                for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
+                                    spanDecorator.onError((HttpServletRequest) event.getSuppliedRequest(),
+                                            (HttpServletResponse) event.getSuppliedResponse(), event.getThrowable(), span);
+                                }
                             }
-                            spanWrapper.finish();
                         }
 
                         @Override
                         public void onStartAsync(AsyncEvent event) throws IOException {
                         }
                     });
-                } else {
-                    spanWrapper.finish();
                 }
+                span.deactivate();
             }
         }
     }

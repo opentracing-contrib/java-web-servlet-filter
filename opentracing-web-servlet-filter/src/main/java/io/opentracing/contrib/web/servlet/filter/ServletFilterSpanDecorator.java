@@ -12,7 +12,7 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import io.opentracing.Span;
+import io.opentracing.BaseSpan;
 import io.opentracing.tag.Tags;
 
 /**
@@ -31,7 +31,7 @@ public interface ServletFilterSpanDecorator {
      * @param httpServletRequest request
      * @param span span to decorate
      */
-    void onRequest(HttpServletRequest httpServletRequest, Span span);
+    void onRequest(HttpServletRequest httpServletRequest, BaseSpan<?> span);
 
     /**
      * Decorate span after {@link javax.servlet.Filter#doFilter(ServletRequest, ServletResponse, FilterChain)}. When it
@@ -41,7 +41,7 @@ public interface ServletFilterSpanDecorator {
      * @param httpServletResponse response
      * @param span span to decorate
      */
-    void onResponse(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, Span span);
+    void onResponse(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, BaseSpan<?> span);
 
     /**
      * Decorate span when an exception is thrown during processing in
@@ -53,7 +53,7 @@ public interface ServletFilterSpanDecorator {
      * @param span span to decorate
      */
     void onError(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
-                 Throwable exception, Span span);
+                 Throwable exception, BaseSpan<?> span);
 
     /**
      * Decorate span on asynchronous request timeout. It is called in
@@ -65,7 +65,7 @@ public interface ServletFilterSpanDecorator {
      * @param span span to decorate
      */
     void onTimeout(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
-                 long timeout, Span span);
+                 long timeout, BaseSpan<?> span);
 
     /**
      * Adds standard tags to span. {@link Tags#HTTP_URL}, {@link Tags#HTTP_STATUS}, {@link Tags#HTTP_METHOD} and
@@ -75,7 +75,7 @@ public interface ServletFilterSpanDecorator {
      */
     ServletFilterSpanDecorator STANDARD_TAGS = new ServletFilterSpanDecorator() {
         @Override
-        public void onRequest(HttpServletRequest httpServletRequest, Span span) {
+        public void onRequest(HttpServletRequest httpServletRequest, BaseSpan<?> span) {
             Tags.COMPONENT.set(span, "java-web-servlet");
 
             Tags.HTTP_METHOD.set(span, httpServletRequest.getMethod());
@@ -85,13 +85,13 @@ public interface ServletFilterSpanDecorator {
 
         @Override
         public void onResponse(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
-                               Span span) {
+                            BaseSpan<?> span) {
                 Tags.HTTP_STATUS.set(span, httpServletResponse.getStatus());
         }
 
         @Override
         public void onError(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
-                            Throwable exception, Span span) {
+                            Throwable exception, BaseSpan<?> span) {
             Tags.ERROR.set(span, Boolean.TRUE);
             span.log(logsForException(exception));
 
@@ -103,7 +103,7 @@ public interface ServletFilterSpanDecorator {
 
         @Override
         public void onTimeout(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
-                              long timeout, Span span) {
+                              long timeout, BaseSpan<?> span) {
             Tags.ERROR.set(span, Boolean.TRUE);
 
             Map<String, Object> timeoutLogs = new HashMap<>();
