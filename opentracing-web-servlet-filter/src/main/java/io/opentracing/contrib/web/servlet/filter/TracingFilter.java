@@ -216,11 +216,10 @@ public class TracingFilter implements Filter {
                         public void onStartAsync(AsyncEvent event) throws IOException {
                         }
                     });
-                }
-                // If not async, then need to explicitly finish the span associated with the scope.
-                // This is necessary, as we don't know whether this request is being handled
-                // asynchronously until after the scope has already been started.
-                if (!httpRequest.isAsyncStarted()) {
+                } else {
+                    // If not async, then need to explicitly finish the span associated with the scope.
+                    // This is necessary, as we don't know whether this request is being handled
+                    // asynchronously until after the scope has already been started.
                     scope.span().finish();
                 }
                 scope.close();
