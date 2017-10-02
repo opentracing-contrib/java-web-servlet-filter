@@ -177,13 +177,12 @@ public class TracingFilter implements Filter {
                 throw ex;
             } finally {
                 if (httpRequest.isAsyncStarted()) {
-                    final Span cont = scope.span();
                     // what if async is already finished? This would not be called
                     httpRequest.getAsyncContext()
                             .addListener(new AsyncListener() {
                         @Override
                         public void onComplete(AsyncEvent event) throws IOException {
-                            try (Scope asyncScope = tracer.scopeManager().activate(cont)) {
+                            try (Scope asyncScope = tracer.scopeManager().activate(scope.span())) {
                                 for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
                                     spanDecorator.onResponse((HttpServletRequest) event.getSuppliedRequest(),
                                             (HttpServletResponse) event.getSuppliedResponse(), asyncScope.span());
@@ -193,7 +192,7 @@ public class TracingFilter implements Filter {
 
                         @Override
                         public void onTimeout(AsyncEvent event) throws IOException {
-                            try (Scope asyncScope = tracer.scopeManager().activate(cont)) {
+                            try (Scope asyncScope = tracer.scopeManager().activate(scope.span())) {
                                 for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
                                     spanDecorator.onTimeout((HttpServletRequest) event.getSuppliedRequest(),
                                             (HttpServletResponse) event.getSuppliedResponse(),
@@ -204,7 +203,7 @@ public class TracingFilter implements Filter {
 
                         @Override
                         public void onError(AsyncEvent event) throws IOException {
-                            try (Scope asyncScope = tracer.scopeManager().activate(cont)) {
+                            try (Scope asyncScope = tracer.scopeManager().activate(scope.span())) {
                                 for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
                                     spanDecorator.onError((HttpServletRequest) event.getSuppliedRequest(),
                                             (HttpServletResponse) event.getSuppliedResponse(), event.getThrowable(), asyncScope.span());
