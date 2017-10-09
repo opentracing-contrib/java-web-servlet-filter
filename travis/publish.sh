@@ -1,3 +1,17 @@
+#
+# Copyright 2016-2017 The OpenTracing Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License. You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed under the License
+# is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+# or implied. See the License for the specific language governing permissions and limitations under
+# the License.
+#
+
 set -euo pipefail
 set -x
 
@@ -46,20 +60,20 @@ check_travis_branch_equals_travis_tag() {
 
 check_release_tag() {
     tag="${TRAVIS_TAG}"
-    if [[ "$tag" =~ ^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$ ]]; then
+    if [[ "$tag" =~ ^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(\.RC[[:digit:]]+)?$ ]]; then
         echo "Build started by version tag $tag. During the release process tags like this"
         echo "are created by the 'release' Maven plugin. Nothing to do here."
         exit 0
-    elif [[ ! "$tag" =~ ^release-[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$ ]]; then
-        echo "You must specify a tag of the format 'release-0.0.0' to release this project."
+    elif [[ ! "$tag" =~ ^release-[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(\.RC[[:digit:]]+)?$ ]]; then
+        echo "You must specify a tag of the format 'release-0.0.0' or 'release-0.0.0.RC0' to release this project."
         echo "The provided tag ${tag} doesn't match that. Aborting."
         exit 1
     fi
 }
 
 is_release_commit() {
-  project_version=$(./mvnw help:evaluate -N -Dexpression=project.version|grep -v '\[')
-  if [[ "$project_version" =~ ^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$ ]]; then
+  project_version=$(./mvnw help:evaluate -N -Dexpression=project.version|sed -n '/^[0-9]/p')
+  if [[ "$project_version" =~ ^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(\.RC[[:digit:]]+)?$ ]]; then
     echo "Build started by release commit $project_version. Will synchronize to maven central."
     return 0
   else

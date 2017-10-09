@@ -20,7 +20,7 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import io.opentracing.ActiveSpan;
+import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
@@ -151,63 +151,62 @@ public class TracingFilter implements Filter {
             SpanContext extractedContext = tracer.extract(Format.Builtin.HTTP_HEADERS,
                     new HttpServletRequestExtractAdapter(httpRequest));
 
-            final ActiveSpan span = tracer.buildSpan(httpRequest.getMethod())
+            final Scope scope = tracer.buildSpan(httpRequest.getMethod())
                     .asChildOf(extractedContext)
                     .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER)
-                    .startActive();
+                    .startActive(false);
 
-            httpRequest.setAttribute(SERVER_SPAN_CONTEXT, span.context());
+            httpRequest.setAttribute(SERVER_SPAN_CONTEXT, scope.span().context());
 
             for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
-                spanDecorator.onRequest(httpRequest, span);
+                spanDecorator.onRequest(httpRequest, scope.span());
             }
 
             try {
                 chain.doFilter(servletRequest, servletResponse);
                 if (!httpRequest.isAsyncStarted()) {
                     for (ServletFilterSpanDecorator spanDecorator : spanDecorators) {
-                        spanDecorator.onResponse(httpRequest, httpResponse, span);
+                        spanDecorator.onResponse(httpRequest, httpResponse, scope.span());
                     }
                 }
                 // catch all exceptions (e.g. RuntimeException, ServletException...)
             } catch (Throwable ex) {
                 for (ServletFilterSpanDecorator spanDecorator : spanDecorators) {
-                    spanDecorator.onError(httpRequest, httpResponse, ex, span);
+                    spanDecorator.onError(httpRequest, httpResponse, ex, scope.span());
                 }
                 throw ex;
             } finally {
                 if (httpRequest.isAsyncStarted()) {
-                    final ActiveSpan.Continuation cont = span.capture();
                     // what if async is already finished? This would not be called
                     httpRequest.getAsyncContext()
                             .addListener(new AsyncListener() {
                         @Override
                         public void onComplete(AsyncEvent event) throws IOException {
-                            try (ActiveSpan activeSpan = cont.activate()) {
+                            try (Scope asyncScope = tracer.scopeManager().activate(scope.span())) {
                                 for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
                                     spanDecorator.onResponse((HttpServletRequest) event.getSuppliedRequest(),
-                                            (HttpServletResponse) event.getSuppliedResponse(), span);
+                                            (HttpServletResponse) event.getSuppliedResponse(), asyncScope.span());
                                 }
                             }
                         }
 
                         @Override
                         public void onTimeout(AsyncEvent event) throws IOException {
-                            try (ActiveSpan activeSpan = cont.activate()) {
+                            try (Scope asyncScope = tracer.scopeManager().activate(scope.span())) {
                                 for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
                                     spanDecorator.onTimeout((HttpServletRequest) event.getSuppliedRequest(),
                                             (HttpServletResponse) event.getSuppliedResponse(),
-                                            event.getAsyncContext().getTimeout(), span);
+                                            event.getAsyncContext().getTimeout(), asyncScope.span());
                                 }
                             }
                         }
 
                         @Override
                         public void onError(AsyncEvent event) throws IOException {
-                            try (ActiveSpan activeSpan = cont.activate()) {
+                            try (Scope asyncScope = tracer.scopeManager().activate(scope.span())) {
                                 for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
                                     spanDecorator.onError((HttpServletRequest) event.getSuppliedRequest(),
-                                            (HttpServletResponse) event.getSuppliedResponse(), event.getThrowable(), span);
+                                            (HttpServletResponse) event.getSuppliedResponse(), event.getThrowable(), asyncScope.span());
                                 }
                             }
                         }
@@ -216,8 +215,13 @@ public class TracingFilter implements Filter {
                         public void onStartAsync(AsyncEvent event) throws IOException {
                         }
                     });
+                } else {
+                    // If not async, then need to explicitly finish the span associated with the scope.
+                    // This is necessary, as we don't know whether this request is being handled
+                    // asynchronously until after the scope has already been started.
+                    scope.span().finish();
                 }
-                span.deactivate();
+                scope.close();
             }
         }
     }
