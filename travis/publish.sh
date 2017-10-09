@@ -35,12 +35,12 @@ is_pull_request() {
   fi
 }
 
-is_travis_branch_master_or_release() {
-  if [[ "${TRAVIS_BRANCH}" == "master" || "${TRAVIS_BRANCH}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo "[Publishing] Travis branch is ${TRAVIS_BRANCH}"
+is_travis_branch_master() {
+  if [ "${TRAVIS_BRANCH}" = master ]; then
+    echo "[Publishing] Travis branch is master"
     return 0
   else
-    echo "[Not Publishing] Travis branch is not master or v0.0.0"
+    echo "[Not Publishing] Travis branch is not master"
     return 1
   fi
 }
@@ -60,12 +60,12 @@ check_travis_branch_equals_travis_tag() {
 
 check_release_tag() {
     tag="${TRAVIS_TAG}"
-    if [[ "$tag" =~ ^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(\-RC[[:digit:]]+)?$ ]]; then
+    if [[ "$tag" =~ ^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(\.RC[[:digit:]]+)?$ ]]; then
         echo "Build started by version tag $tag. During the release process tags like this"
         echo "are created by the 'release' Maven plugin. Nothing to do here."
         exit 0
-    elif [[ ! "$tag" =~ ^release-[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(\-RC[[:digit:]]+)?$ ]]; then
-        echo "You must specify a tag of the format 'release-0.0.0' or 'release-0.0.0-RC0' to release this project."
+    elif [[ ! "$tag" =~ ^release-[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(\.RC[[:digit:]]+)?$ ]]; then
+        echo "You must specify a tag of the format 'release-0.0.0' or 'release-0.0.0.RC0' to release this project."
         echo "The provided tag ${tag} doesn't match that. Aborting."
         exit 1
     fi
@@ -73,7 +73,7 @@ check_release_tag() {
 
 is_release_commit() {
   project_version=$(./mvnw help:evaluate -N -Dexpression=project.version|sed -n '/^[0-9]/p')
-  if [[ "$project_version" =~ ^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(\-RC[[:digit:]]+)?$ ]]; then
+  if [[ "$project_version" =~ ^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(\.RC[[:digit:]]+)?$ ]]; then
     echo "Build started by release commit $project_version. Will synchronize to maven central."
     return 0
   else
@@ -85,17 +85,16 @@ release_version() {
     echo "${TRAVIS_TAG}" | sed 's/^release-//'
 }
 
-safe_checkout_remote_branch() {
-  # We need to be on a branch for release:perform to be able to create commits,
-  # and we want that branch to be master or v0.0.0. which has been checked before.
-  # But we also want to make sure that we build and release exactly the tagged version,
-  # so we verify that the remote branch is where our tag is.
-  git checkout -B v`release_version | sed 's/-RC[[:digit:]]\+//'`
-  git fetch origin "${TRAVIS_BRANCH}":origin/"${TRAVIS_BRANCH}"
-  commit_local="$(git show --pretty='format:%H' ${TRAVIS_BRANCH})"
-  commit_remote="$(git show --pretty='format:%H' origin/${TRAVIS_BRANCH})"
-  if [ "$commit_local" != "$commit_remote" ]; then
-    echo "${TRAVIS_BRANCH} on remote 'origin' has commits since the version under release, aborting"
+safe_checkout_master() {
+  # We need to be on a branch for release:perform to be able to create commits, and we want that branch to be master.
+  # But we also want to make sure that we build and release exactly the tagged version, so we verify that the remote
+  # master is where our tag is.
+  git checkout -B master
+  git fetch origin master:origin/master
+  commit_local_master="$(git show --pretty='format:%H' master)"
+  commit_remote_master="$(git show --pretty='format:%H' origin/master)"
+  if [ "$commit_local_master" != "$commit_remote_master" ]; then
+    echo "Master on remote 'origin' has commits since the version under release, aborting"
     exit 1
   fi
 }
@@ -116,7 +115,7 @@ if is_pull_request; then
   true
 # If we are on master, we will deploy the latest snapshot or release version
 #   - If a release commit fails to deploy for a transient reason, delete the broken version from bintray and click rebuild
-elif is_travis_branch_master_or_release; then
+elif is_travis_branch_master; then
   ./mvnw --batch-mode -s ./.settings.xml -Prelease -nsu -DskipTests deploy
 
   # If the deployment succeeded, sync it to Maven Central. Note: this needs to be done once per project, not module, hence -N
@@ -126,8 +125,7 @@ elif is_travis_branch_master_or_release; then
 
 # If we are on a release tag, the following will update any version references and push a version tag for deployment.
 elif build_started_by_tag; then
-  safe_checkout_remote_branch
+  safe_checkout_master
   ./mvnw --batch-mode -s ./.settings.xml -Prelease -nsu -DreleaseVersion="$(release_version)" -Darguments="-DskipTests" release:prepare
 fi
-
 
