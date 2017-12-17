@@ -74,7 +74,7 @@ public class TracingFilter implements Filter {
 
     private FilterConfig filterConfig;
 
-    private Tracer tracer;
+    protected Tracer tracer;
     private List<ServletFilterSpanDecorator> spanDecorators;
     private Pattern skipPattern;
 
