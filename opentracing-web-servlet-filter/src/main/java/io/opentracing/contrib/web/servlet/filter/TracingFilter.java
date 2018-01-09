@@ -193,23 +193,10 @@ public class TracingFilter implements Filter {
 
                         @Override
                         public void onTimeout(AsyncEvent event) throws IOException {
-                            try (ActiveSpan activeSpan = cont.activate()) {
-                                for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
-                                    spanDecorator.onTimeout((HttpServletRequest) event.getSuppliedRequest(),
-                                            (HttpServletResponse) event.getSuppliedResponse(),
-                                            event.getAsyncContext().getTimeout(), span);
-                                }
-                            }
                         }
 
                         @Override
                         public void onError(AsyncEvent event) throws IOException {
-                            try (ActiveSpan activeSpan = cont.activate()) {
-                                for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
-                                    spanDecorator.onError((HttpServletRequest) event.getSuppliedRequest(),
-                                            (HttpServletResponse) event.getSuppliedResponse(), event.getThrowable(), span);
-                                }
-                            }
                         }
 
                         @Override
