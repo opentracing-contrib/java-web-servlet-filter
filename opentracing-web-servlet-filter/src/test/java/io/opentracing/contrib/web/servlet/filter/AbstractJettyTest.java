@@ -130,7 +130,7 @@ public abstract class AbstractJettyTest {
         public void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
 
-            tracer.scopeManager().active().span().setTag("CurrentSpan", true);
+            tracer.activeSpan().setTag("CurrentSpan", true);
         }
     }
 
@@ -162,7 +162,7 @@ public abstract class AbstractJettyTest {
             final AsyncContext asyncContext = request.startAsync(request, response);
 
             // TODO: This could be avoided by using an OpenTracing aware Runnable (when available)
-            final Span cont = tracer.scopeManager().active().span();
+            final Span cont = tracer.activeSpan();
 
             asyncContext.start(new Runnable() {
                 @Override
