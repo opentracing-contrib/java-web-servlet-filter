@@ -26,12 +26,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.mockito.Mockito;
 
-import io.opentracing.ActiveSpan;
+import io.opentracing.Scope;
+import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.util.GlobalTracer;
-import io.opentracing.util.ThreadLocalActiveSpanSource;
+import io.opentracing.util.ThreadLocalScopeManager;
 
 /**
  * @author Pavol Loffay
@@ -47,7 +48,7 @@ public abstract class AbstractJettyTest {
 
     @Before
     public void beforeTest() throws Exception {
-        mockTracer = Mockito.spy(new MockTracer(new ThreadLocalActiveSpanSource(), MockTracer.Propagator.TEXT_MAP));
+        mockTracer = Mockito.spy(new MockTracer(new ThreadLocalScopeManager(), MockTracer.Propagator.TEXT_MAP));
 
         ServletContextHandler servletContext = new ServletContextHandler();
         servletContext.setContextPath(contextPath);
@@ -161,13 +162,13 @@ public abstract class AbstractJettyTest {
             final AsyncContext asyncContext = request.startAsync(request, response);
 
             // TODO: This could be avoided by using an OpenTracing aware Runnable (when available)
-            final ActiveSpan.Continuation cont = tracer.activeSpan().capture();
+            final Span cont = tracer.activeSpan();
 
             asyncContext.start(new Runnable() {
                 @Override
                 public void run() {
                     HttpServletResponse asyncResponse = (HttpServletResponse) asyncContext.getResponse();
-                    try (ActiveSpan activeSpan = cont.activate()) {
+                    try (Scope activeScope = tracer.scopeManager().activate(cont, false)) {
                         try {
                             Thread.sleep(ASYNC_SLEEP_TIME_MS);
                             asyncResponse.setStatus(204);

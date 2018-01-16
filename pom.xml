@@ -4,7 +4,7 @@
 
   <groupId>io.opentracing.contrib</groupId>
   <artifactId>opentracing-web-servlet-filter-parent</artifactId>
-  <version>0.0.10-SNAPSHOT</version>
+  <version>0.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>${project.groupId}:${project.artifactId}</name>
@@ -39,7 +39,7 @@
     <maven.compiler.target>1.7</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-    <version.io.opentracing>0.30.0</version.io.opentracing>
+    <version.io.opentracing>0.31.0</version.io.opentracing>
     <version.javax.servlet-javax.servlet-api>3.0.1</version.javax.servlet-javax.servlet-api>
     <version.junit>4.12</version.junit>
     <version.org.mockito-mockito-all>1.10.19</version.org.mockito-mockito-all>
