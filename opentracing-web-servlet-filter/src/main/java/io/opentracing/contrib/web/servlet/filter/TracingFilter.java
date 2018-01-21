@@ -150,12 +150,24 @@ public class TracingFilter implements Filter {
             SpanContext extractedContext = tracer.extract(Format.Builtin.HTTP_HEADERS,
                     new HttpServletRequestExtractAdapter(httpRequest));
 
-            final Scope scope = tracer.buildSpan(httpRequest.getMethod())
-                    .asChildOf(extractedContext)
-                    .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER)
-                    .startActive(false);
-
+            Scope tmpScope = null;
+            
+            if ( extractedContext != null ) {
+                tmpScope = tracer.buildSpan(httpRequest.getMethod())
+        					  .asChildOf(extractedContext)
+        					  .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER)
+        					  .startActive(false);
+            } else { // If have a null parent then start new span that has no parent.
+                tmpScope = tracer.buildSpan(httpRequest.getMethod())
+            				  .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER)
+            		          .startActive(false);
+            }
+            
+            final Scope scope = tmpScope;
+            
             httpRequest.setAttribute(SERVER_SPAN_CONTEXT, scope.span().context());
+            
+            TrracingSpanContext.add(scope.span());
 
             for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
                 spanDecorator.onRequest(httpRequest, scope.span());
@@ -208,6 +220,7 @@ public class TracingFilter implements Filter {
                     scope.span().finish();
                 }
                 scope.close();
+                TrracingSpanContext.release();
             }
         }
     }
