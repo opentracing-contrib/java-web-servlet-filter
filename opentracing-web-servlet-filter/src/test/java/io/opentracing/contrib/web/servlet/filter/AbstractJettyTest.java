@@ -223,7 +223,6 @@ public abstract class AbstractJettyTest {
                     try {
                         TimeUnit.MILLISECONDS.sleep(200);
                     } catch (InterruptedException e) {
-                        System.out.println("\n\nException\n\n");
                         e.printStackTrace();
                     } finally {
                         asyncContext.complete();
