@@ -181,16 +181,26 @@ public class TracingFilter implements Filter {
                             .addListener(new AsyncListener() {
                         @Override
                         public void onComplete(AsyncEvent event) throws IOException {
-                            try (Scope asyncScope = tracer.scopeManager().activate(scope.span(), true)) {
-                                for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
-                                    spanDecorator.onResponse((HttpServletRequest) event.getSuppliedRequest(),
-                                            (HttpServletResponse) event.getSuppliedResponse(), asyncScope.span());
-                                }
+                            HttpServletRequest httpRequest = (HttpServletRequest) event.getSuppliedRequest();
+                            HttpServletResponse httpResponse = (HttpServletResponse) event.getSuppliedResponse();
+                            for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
+                                    spanDecorator.onResponse(httpRequest,
+                                    httpResponse,
+                                    scope.span());
                             }
+                            scope.span().finish();
                         }
 
                         @Override
                         public void onTimeout(AsyncEvent event) throws IOException {
+                            HttpServletRequest httpRequest = (HttpServletRequest) event.getSuppliedRequest();
+                            HttpServletResponse httpResponse = (HttpServletResponse) event.getSuppliedResponse();
+                            for (ServletFilterSpanDecorator spanDecorator : spanDecorators) {
+                                  spanDecorator.onTimeout(httpRequest,
+                                      httpResponse,
+                                      event.getAsyncContext().getTimeout(),
+                                      scope.span());
+                              }
                         }
 
                         @Override

@@ -5,11 +5,16 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import java.util.concurrent.TimeUnit;
+import okhttp3.Call;
+import okhttp3.Protocol;
+import okhttp3.Response;
 import org.awaitility.Awaitility;
 import org.hamcrest.core.IsEqual;
 import org.junit.Assert;
@@ -218,6 +223,40 @@ public class TracingFilterTest extends AbstractJettyTest {
         Assert.assertEquals(localRequestUrl("/async"), mockSpan.tags().get(Tags.HTTP_URL.getKey()));
         Assert.assertEquals(204, mockSpan.tags().get(Tags.HTTP_STATUS.getKey()));
         Assert.assertEquals("java-web-servlet", mockSpan.tags().get(Tags.COMPONENT.getKey()));
+    }
+    @Test
+    public void testAsyncTimeout() throws IOException {
+        {
+            OkHttpClient client = new OkHttpClient.Builder().readTimeout(500, TimeUnit.MILLISECONDS)
+                .retryOnConnectionFailure(false).build();
+            Request request = new Request.Builder()
+                .url(localRequestUrl("/asyncTimeout"))
+                .build();
+
+            Call call = client.newCall(request);
+            call.execute().close();
+            Awaitility.await().until(reportedSpansSize(), IsEqual.equalTo(1));
+        }
+
+        List<MockSpan> mockSpans = mockTracer.finishedSpans();
+        Assert.assertEquals(1, mockSpans.size());
+        assertOnErrors(mockSpans);
+
+        MockSpan mockSpan = mockSpans.get(0);
+        Assert.assertEquals("GET", mockSpan.operationName());
+        Assert.assertEquals(6, mockSpan.tags().size());
+        Assert.assertEquals(Tags.SPAN_KIND_SERVER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
+        Assert.assertEquals("GET", mockSpan.tags().get(Tags.HTTP_METHOD.getKey()));
+        Assert.assertEquals(localRequestUrl("/asyncTimeout"), mockSpan.tags().get(Tags.HTTP_URL.getKey()));
+        Assert.assertEquals(500, mockSpan.tags().get(Tags.HTTP_STATUS.getKey()));
+        Assert.assertEquals("java-web-servlet", mockSpan.tags().get(Tags.COMPONENT.getKey()));
+
+        Assert.assertEquals(1, mockSpan.logEntries().size());
+        Assert.assertEquals(3, mockSpan.logEntries().get(0).fields().size());
+        Assert.assertEquals(Tags.ERROR.getKey(), mockSpan.logEntries().get(0).fields().get("event"));
+        Assert.assertEquals("timeout",
+            mockSpan.logEntries().get(0).fields().get("message"));
+        Assert.assertNotNull("10", mockSpan.logEntries().get(0).fields().get("timeout"));
     }
 
     @Test
