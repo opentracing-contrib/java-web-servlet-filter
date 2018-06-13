@@ -243,7 +243,7 @@ public class TracingFilterTest extends AbstractJettyTest {
 
         MockSpan mockSpan = mockSpans.get(0);
         Assert.assertEquals("GET", mockSpan.operationName());
-        Assert.assertEquals(6, mockSpan.tags().size());
+        Assert.assertEquals(5, mockSpan.tags().size());
         Assert.assertEquals(Tags.SPAN_KIND_SERVER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
         Assert.assertEquals("GET", mockSpan.tags().get(Tags.HTTP_METHOD.getKey()));
         Assert.assertEquals(localRequestUrl("/asyncTimeout"), mockSpan.tags().get(Tags.HTTP_URL.getKey()));
@@ -251,10 +251,8 @@ public class TracingFilterTest extends AbstractJettyTest {
         Assert.assertEquals("java-web-servlet", mockSpan.tags().get(Tags.COMPONENT.getKey()));
 
         Assert.assertEquals(1, mockSpan.logEntries().size());
-        Assert.assertEquals(3, mockSpan.logEntries().get(0).fields().size());
-        Assert.assertEquals(Tags.ERROR.getKey(), mockSpan.logEntries().get(0).fields().get("event"));
-        Assert.assertEquals("timeout",
-            mockSpan.logEntries().get(0).fields().get("message"));
+        Assert.assertEquals(2, mockSpan.logEntries().get(0).fields().size());
+        Assert.assertEquals("timeout", mockSpan.logEntries().get(0).fields().get("event"));
         Assert.assertNotNull("10", mockSpan.logEntries().get(0).fields().get("timeout"));
     }
 
