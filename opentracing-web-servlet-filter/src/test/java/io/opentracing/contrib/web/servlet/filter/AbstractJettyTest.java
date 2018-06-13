@@ -49,7 +49,6 @@ public abstract class AbstractJettyTest {
     protected Server jettyServer;
     protected MockTracer mockTracer;
 
-
     @Before
     public void beforeTest() throws Exception {
         mockTracer = Mockito.spy(new MockTracer(new ThreadLocalScopeManager(), MockTracer.Propagator.TEXT_MAP));

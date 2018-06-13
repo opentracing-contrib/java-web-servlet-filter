@@ -13,8 +13,6 @@ import java.util.concurrent.Callable;
 
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
-import okhttp3.Protocol;
-import okhttp3.Response;
 import org.awaitility.Awaitility;
 import org.hamcrest.core.IsEqual;
 import org.junit.Assert;
@@ -224,6 +222,7 @@ public class TracingFilterTest extends AbstractJettyTest {
         Assert.assertEquals(204, mockSpan.tags().get(Tags.HTTP_STATUS.getKey()));
         Assert.assertEquals("java-web-servlet", mockSpan.tags().get(Tags.COMPONENT.getKey()));
     }
+
     @Test
     public void testAsyncTimeout() throws IOException {
         {
