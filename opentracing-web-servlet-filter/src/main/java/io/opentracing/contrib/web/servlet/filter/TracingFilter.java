@@ -205,6 +205,14 @@ public class TracingFilter implements Filter {
 
                         @Override
                         public void onError(AsyncEvent event) throws IOException {
+                            HttpServletRequest httpRequest = (HttpServletRequest) event.getSuppliedRequest();
+                            HttpServletResponse httpResponse = (HttpServletResponse) event.getSuppliedResponse();
+                            for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
+                                spanDecorator.onError(httpRequest,
+                                    httpResponse,
+                                    event.getThrowable(),
+                                    scope.span());
+                            }
                         }
 
                         @Override
