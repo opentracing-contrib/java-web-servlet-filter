@@ -1,8 +1,12 @@
 package io.opentracing.contrib.web.servlet.filter;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import javax.servlet.AsyncContext;
@@ -31,7 +35,6 @@ import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.mock.MockTracer;
-import io.opentracing.util.GlobalTracer;
 import io.opentracing.util.ThreadLocalScopeManager;
 
 /**
@@ -59,6 +62,10 @@ public abstract class AbstractJettyTest {
         asyncServletHolder.setAsyncSupported(true);
         servletContext.addServlet(AsyncImmediateExitServlet.class, "/asyncImmediateExit")
                 .setAsyncSupported(true);
+
+        ServletHolder timeoutServletHolder = new ServletHolder(new AsyncTimeoutServlet());
+        timeoutServletHolder.setAsyncSupported(true);
+        servletContext.addServlet(timeoutServletHolder, "/asyncTimeout");
 
         servletContext.addServlet(new ServletHolder(new LocalSpanServlet(mockTracer)), "/localSpan");
         servletContext.addServlet(new ServletHolder(new CurrentSpanServlet(mockTracer)), "/currentSpan");
@@ -193,6 +200,36 @@ public abstract class AbstractJettyTest {
             final AsyncContext asyncContext = request.startAsync(request, response);
             response.setStatus(204);
             asyncContext.complete();
+        }
+    }
+
+    public static class AsyncTimeoutServlet extends HttpServlet {
+
+        @Override
+        public void doGet(final HttpServletRequest request, final HttpServletResponse response)
+            throws ServletException, IOException {
+
+            // avoid retries on timeout
+            if (request.getAttribute("timedOut") != null) {
+                return;
+            }
+            request.setAttribute("timedOut", true);
+
+            final AsyncContext asyncContext = request.startAsync(request, response);
+            asyncContext.setTimeout(10);
+            asyncContext.start(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(200);
+                    } catch (InterruptedException e) {
+                        System.out.println("\n\nException\n\n");
+                        e.printStackTrace();
+                    } finally {
+                        asyncContext.complete();
+                    }
+                }
+            });
         }
     }
 

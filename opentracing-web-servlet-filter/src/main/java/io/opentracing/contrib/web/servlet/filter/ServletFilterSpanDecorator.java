@@ -105,11 +105,11 @@ public interface ServletFilterSpanDecorator {
         public void onTimeout(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
                               long timeout, Span span) {
             Tags.ERROR.set(span, Boolean.TRUE);
-
             Map<String, Object> timeoutLogs = new HashMap<>();
             timeoutLogs.put("event", Tags.ERROR.getKey());
             timeoutLogs.put("message", "timeout");
             timeoutLogs.put("timeout", timeout);
+            span.log(timeoutLogs);
         }
 
         private Map<String, String> logsForException(Throwable throwable) {
