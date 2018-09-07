@@ -1,18 +1,20 @@
 package io.opentracing.contrib.web.servlet.filter;
 
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
 import java.util.concurrent.TimeUnit;
-import okhttp3.Call;
+
+import okhttp3.*;
 import org.awaitility.Awaitility;
 import org.hamcrest.core.IsEqual;
 import org.junit.Assert;
@@ -22,9 +24,6 @@ import io.opentracing.mock.MockSpan;
 import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapInjectAdapter;
 import io.opentracing.tag.Tags;
-import okhttp3.Headers;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
 
 /**
  * @author Pavol Loffay
@@ -316,6 +315,25 @@ public class TracingFilterTest extends AbstractJettyTest {
 
         verify(mockTracer, never()).buildSpan(anyString());
         Assert.assertTrue(mockTracer.finishedSpans().isEmpty());
+    }
+
+    @Test
+    public void testSwallowsIllegalArgumentExceptionAndStartsNewSpan() throws IOException{
+        doThrow(new IllegalArgumentException()).when(mockTracer).extract(any(Format.class), any());
+
+        {
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .url(localRequestUrl("/hello"))
+                    .build();
+
+            Response response = client.newCall(request).execute();
+
+            Assert.assertEquals(202, response.code());
+        }
+
+        List<MockSpan> mockSpans = mockTracer.finishedSpans();
+        Assert.assertEquals(1, mockSpans.size());
     }
 
     public static void assertOnErrors(List<MockSpan> spans) {
