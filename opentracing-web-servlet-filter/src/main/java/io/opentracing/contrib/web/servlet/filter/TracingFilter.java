@@ -147,8 +147,13 @@ public class TracingFilter implements Filter {
         if (servletRequest.getAttribute(SERVER_SPAN_CONTEXT) != null) {
             chain.doFilter(servletRequest, servletResponse);
         } else {
-            SpanContext extractedContext = tracer.extract(Format.Builtin.HTTP_HEADERS,
-                    new HttpServletRequestExtractAdapter(httpRequest));
+            SpanContext extractedContext;
+            try {
+                extractedContext = tracer.extract(Format.Builtin.HTTP_HEADERS,
+                        new HttpServletRequestExtractAdapter(httpRequest));
+            } catch (IllegalArgumentException e) {
+                extractedContext = null;
+            }
 
             final Scope scope = tracer.buildSpan(httpRequest.getMethod())
                     .asChildOf(extractedContext)
