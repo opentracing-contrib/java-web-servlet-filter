@@ -1,11 +1,10 @@
 package io.opentracing.contrib.web.servlet.filter;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -27,6 +26,7 @@ import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.mockito.Mockito;
 
@@ -34,6 +34,7 @@ import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
+import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.util.ThreadLocalScopeManager;
 
@@ -75,10 +76,15 @@ public abstract class AbstractJettyTest {
                 DispatcherType.FORWARD, DispatcherType.ASYNC, DispatcherType.ERROR, DispatcherType.INCLUDE));
         servletContext.addFilter(ErrorFilter.class, "/*", EnumSet.of(DispatcherType.REQUEST));
 
+        initServletContext(servletContext);
+
         jettyServer = new Server(0);
         jettyServer.setHandler(servletContext);
         jettyServer.start();
         serverPort = ((ServerConnector)jettyServer.getConnectors()[0]).getLocalPort();
+    }
+
+    protected void initServletContext(ServletContextHandler servletContext) {
     }
 
     @After
@@ -96,12 +102,29 @@ public abstract class AbstractJettyTest {
         return "http://localhost:" + serverPort + ("/".equals(contextPath) ? "" : contextPath) + path;
     }
 
+    public static void assertOnErrors(List<MockSpan> spans) {
+        for (MockSpan mockSpan: spans) {
+            Assert.assertEquals(mockSpan.generatedErrors().toString(), 0, mockSpan.generatedErrors().size());
+        }
+    }
+
+    Callable<Integer> reportedSpansSize() {
+        return new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                return mockTracer.finishedSpans().size();
+            }
+        };
+    }
+
     public static class TestServlet extends HttpServlet {
 
         @Override
         public void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
-            response.setStatus(HttpServletResponse.SC_ACCEPTED);
+            // Check mock tracer is available in servlet context
+            response.setStatus(getServletContext().getAttribute(Tracer.class.getName()) instanceof MockTracer ?
+                    HttpServletResponse.SC_ACCEPTED : HttpServletResponse.SC_EXPECTATION_FAILED);
         }
     }
 

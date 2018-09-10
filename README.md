@@ -14,6 +14,12 @@ Tracing filter can be programmatically initialized:
 
 or added to `web.xml`, however it requires to register a tracer instance: `GlobalTracer.register(tracer)`.
 
+## Tracer override
+
+If a tracer has been associated with the `ServletContext` as an attribute with key `io.opentracing.Tracer`,
+possibly managed using a `ServletContextListener`,
+then it will override any tracer explicitly passed to the filter or registered with the `GlobalTracer`.
+
 ## Accessing Server Span
 Current server span context is accessible in HttpServletRequest attributes.
 ```java

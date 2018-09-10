@@ -109,6 +109,15 @@ public class TracingFilter implements Filter {
         this.filterConfig = filterConfig;
         ServletContext servletContext = filterConfig.getServletContext();
 
+        // Check whether the servlet context provides a tracer
+        Tracer scTracer = (Tracer)servletContext.getAttribute(Tracer.class.getName());
+        if (scTracer != null) {
+            tracer = scTracer;
+        } else {
+            // Add current tracer to servlet context, so available to webapp
+            servletContext.setAttribute(Tracer.class.getName(), tracer);
+        }
+
         // use decorators from context attributes
         Object contextAttribute = servletContext.getAttribute(SPAN_DECORATORS);
         if (contextAttribute instanceof Collection) {

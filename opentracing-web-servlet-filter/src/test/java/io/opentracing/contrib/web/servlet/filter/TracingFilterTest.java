@@ -5,14 +5,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-
 import java.util.concurrent.TimeUnit;
-import okhttp3.Call;
+
 import org.awaitility.Awaitility;
 import org.hamcrest.core.IsEqual;
 import org.junit.Assert;
@@ -22,6 +19,7 @@ import io.opentracing.mock.MockSpan;
 import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapInjectAdapter;
 import io.opentracing.tag.Tags;
+import okhttp3.Call;
 import okhttp3.Headers;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -316,20 +314,5 @@ public class TracingFilterTest extends AbstractJettyTest {
 
         verify(mockTracer, never()).buildSpan(anyString());
         Assert.assertTrue(mockTracer.finishedSpans().isEmpty());
-    }
-
-    public static void assertOnErrors(List<MockSpan> spans) {
-        for (MockSpan mockSpan: spans) {
-            Assert.assertEquals(mockSpan.generatedErrors().toString(), 0, mockSpan.generatedErrors().size());
-        }
-    }
-
-    Callable<Integer> reportedSpansSize() {
-        return new Callable<Integer>() {
-            @Override
-            public Integer call() throws Exception {
-                return mockTracer.finishedSpans().size();
-            }
-        };
     }
 }
