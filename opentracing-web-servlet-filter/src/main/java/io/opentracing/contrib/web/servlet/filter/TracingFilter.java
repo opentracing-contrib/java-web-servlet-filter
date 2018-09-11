@@ -110,9 +110,9 @@ public class TracingFilter implements Filter {
         ServletContext servletContext = filterConfig.getServletContext();
 
         // Check whether the servlet context provides a tracer
-        Tracer scTracer = (Tracer)servletContext.getAttribute(Tracer.class.getName());
-        if (scTracer != null) {
-            tracer = scTracer;
+        Object tracerObj = servletContext.getAttribute(Tracer.class.getName());
+        if (tracerObj instanceof Tracer) {
+            tracer = (Tracer)tracerObj;
         } else {
             // Add current tracer to servlet context, so available to webapp
             servletContext.setAttribute(Tracer.class.getName(), tracer);
