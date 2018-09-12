@@ -17,8 +17,14 @@ or added to `web.xml`, however it requires to register a tracer instance: `Globa
 ## Tracer override
 
 If a tracer has been associated with the `ServletContext` as an attribute with key `io.opentracing.Tracer`,
-possibly managed using a `ServletContextListener`,
 then it will override any tracer explicitly passed to the filter or registered with the `GlobalTracer`.
+
+This approach can be used where OpenTracing and Tracer implementation specific dependencies are configured within a
+servlet container (rather than bundled with the webapp), and we don't wish to share a single `GlobalTracer` instance
+across all webapps (e.g. as this may mean all webapps report their spans associated with the same service name).
+
+In these situations, using a `ServletContextListener` to create a `Tracer` will enable it to be specific to the webapp and
+managed with its lifecycle.
 
 ## Accessing Server Span
 Current server span context is accessible in HttpServletRequest attributes.
