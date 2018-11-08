@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright ${license.git.copyrightYears} The OpenTracing Authors
+
+    Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+    in compliance with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software distributed under the License
+    is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+    or implied. See the License for the specific language governing permissions and limitations under
+    the License.
+
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
@@ -39,6 +54,8 @@
     <maven.compiler.target>1.7</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
+    <main.basedir>${project.basedir}</main.basedir>
+
     <version.io.opentracing>0.31.0</version.io.opentracing>
     <version.javax.servlet-javax.servlet-api>3.0.1</version.javax.servlet-javax.servlet-api>
     <version.junit>4.12</version.junit>
@@ -52,6 +69,7 @@
     <version.maven-javadoc-plugin>2.10.4</version.maven-javadoc-plugin>
     <version.io.takari-maven>0.3.4</version.io.takari-maven>
     <version.io.zikin.centralsync-maven-plugin>0.1.0</version.io.zikin.centralsync-maven-plugin>
+    <license-maven-plugin.version>3.0</license-maven-plugin.version>
   </properties>
 
   <modules>
@@ -129,6 +147,46 @@
           <groupId>io.takari</groupId>
           <artifactId>maven</artifactId>
           <version>${version.io.takari-maven}</version>
+        </plugin>
+        <plugin>
+          <groupId>com.mycila</groupId>
+          <artifactId>license-maven-plugin</artifactId>
+          <version>${license-maven-plugin.version}</version>
+          <configuration>
+            <header>${main.basedir}/src/etc/header.txt</header>
+            <mapping>
+              <java>SLASHSTAR_STYLE</java>
+            </mapping>
+            <excludes>
+              <exclude>.travis.yml</exclude>
+              <exclude>.coveralls.yml</exclude>
+              <exclude>.gitignore</exclude>
+              <exclude>.mvn/**</exclude>
+              <exclude>mvnw*</exclude>
+              <exclude>etc/header.txt</exclude>
+              <exclude>**/.idea/**</exclude>
+              <exclude>LICENSE</exclude>
+              <exclude>**/*.md</exclude>
+              <exclude>src/test/resources/**</exclude>
+              <exclude>src/main/resources/**</exclude>
+            </excludes>
+            <strictCheck>true</strictCheck>
+          </configuration>
+          <dependencies>
+            <dependency>
+              <groupId>com.mycila</groupId>
+              <artifactId>license-maven-plugin-git</artifactId>
+              <version>${license-maven-plugin.version}</version>
+            </dependency>
+          </dependencies>
+          <executions>
+            <execution>
+              <goals>
+                <goal>check</goal>
+              </goals>
+              <phase>compile</phase>
+            </execution>
+          </executions>
         </plugin>
       </plugins>
     </pluginManagement>
