@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright ${license.git.copyrightYears} The OpenTracing Authors
+    Copyright 2016-2018 The OpenTracing Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -25,7 +25,8 @@
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Support for integrating OpenTracing in Web Servlet projects</description>
   <url>http://github.com/opentracing-contrib/java-web-servlet-filter</url>
-
+  <inceptionYear>2016</inceptionYear>
+  
   <scm>
     <url>https://github.com/opentracing-contrib/java-web-servlet-filter</url>
     <connection>scm:git:https://github.com/opentracing-contrib/java-web-servlet-filter.git</connection>
@@ -50,6 +51,7 @@
   </developers>
 
   <properties>
+
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
