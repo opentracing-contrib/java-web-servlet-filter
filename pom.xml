@@ -76,6 +76,7 @@
 
   <modules>
     <module>opentracing-web-servlet-filter</module>
+    <module>opentracing-web-servlet-filter-mdc</module>
   </modules>
 
   <dependencyManagement>
