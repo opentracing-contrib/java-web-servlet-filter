@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import io.opentracing.propagation.TextMapAdapter;
 import org.awaitility.Awaitility;
 import org.hamcrest.core.IsEqual;
 import org.junit.Assert;
@@ -30,7 +31,6 @@ import org.junit.Test;
 
 import io.opentracing.mock.MockSpan;
 import io.opentracing.propagation.Format;
-import io.opentracing.propagation.TextMapInjectAdapter;
 import io.opentracing.tag.Tags;
 import okhttp3.Call;
 import okhttp3.Headers;
@@ -185,7 +185,7 @@ public class TracingFilterTest extends AbstractJettyTest {
         MockSpan foo = (MockSpan) mockTracer.buildSpan("foo").startManual();
         {
             Map<String, String> injectMap = new HashMap<>();
-            mockTracer.inject(foo.context(), Format.Builtin.HTTP_HEADERS, new TextMapInjectAdapter(injectMap));
+            mockTracer.inject(foo.context(), Format.Builtin.HTTP_HEADERS, new TextMapAdapter(injectMap));
 
             OkHttpClient client = new OkHttpClient();
             Request request = new Request.Builder()
