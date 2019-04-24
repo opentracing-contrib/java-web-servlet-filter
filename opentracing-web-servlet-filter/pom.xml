@@ -25,7 +25,7 @@
   <artifactId>opentracing-web-servlet-filter</artifactId>
 
   <properties>
-    <version.org.eclipse.jetty>9.3.15.v20161220</version.org.eclipse.jetty>
+    <version.org.eclipse.jetty>9.4.17.v20190418</version.org.eclipse.jetty>
     <version.com.squareup.okhttp3>3.5.0</version.com.squareup.okhttp3>
     <version.org.mockito>1.10.19</version.org.mockito>
     <main.basedir>${project.basedir}/..</main.basedir>
