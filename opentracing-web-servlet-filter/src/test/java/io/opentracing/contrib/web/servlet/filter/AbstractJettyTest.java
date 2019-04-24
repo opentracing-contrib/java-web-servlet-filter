@@ -156,7 +156,7 @@ public abstract class AbstractJettyTest {
             SpanContext spanContext = (SpanContext)request.getAttribute(TracingFilter.SERVER_SPAN_CONTEXT);
             tracer.buildSpan("localSpan")
                     .asChildOf(spanContext)
-                    .startManual()
+                    .start()
                     .finish();
         }
     }

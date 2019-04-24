@@ -182,7 +182,7 @@ public class TracingFilterTest extends AbstractJettyTest {
 
     @Test
     public void testSpanContextPropagation() throws IOException {
-        MockSpan foo = (MockSpan) mockTracer.buildSpan("foo").startManual();
+        MockSpan foo = mockTracer.buildSpan("foo").start();
         {
             Map<String, String> injectMap = new HashMap<>();
             mockTracer.inject(foo.context(), Format.Builtin.HTTP_HEADERS, new TextMapAdapter(injectMap));
