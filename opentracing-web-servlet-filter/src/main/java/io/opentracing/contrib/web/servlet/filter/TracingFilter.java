@@ -14,6 +14,7 @@
  */
 package io.opentracing.contrib.web.servlet.filter;
 
+import io.opentracing.Span;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -173,28 +174,28 @@ public class TracingFilter implements Filter {
             SpanContext extractedContext = tracer.extract(Format.Builtin.HTTP_HEADERS,
                     new HttpServletRequestExtractAdapter(httpRequest));
 
-            final Scope scope = tracer.buildSpan(httpRequest.getMethod())
+            final Span span = tracer.buildSpan(httpRequest.getMethod())
                     .asChildOf(extractedContext)
                     .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER)
-                    .startActive(false);
+                    .start();
 
-            httpRequest.setAttribute(SERVER_SPAN_CONTEXT, scope.span().context());
+            httpRequest.setAttribute(SERVER_SPAN_CONTEXT, span.context());
 
             for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
-                spanDecorator.onRequest(httpRequest, scope.span());
+                spanDecorator.onRequest(httpRequest, span);
             }
 
-            try {
+            try (Scope scope = tracer.activateSpan(span)) {
                 chain.doFilter(servletRequest, servletResponse);
                 if (!httpRequest.isAsyncStarted()) {
                     for (ServletFilterSpanDecorator spanDecorator : spanDecorators) {
-                        spanDecorator.onResponse(httpRequest, httpResponse, scope.span());
+                        spanDecorator.onResponse(httpRequest, httpResponse, span);
                     }
                 }
-                // catch all exceptions (e.g. RuntimeException, ServletException...)
+            // catch all exceptions (e.g. RuntimeException, ServletException...)
             } catch (Throwable ex) {
                 for (ServletFilterSpanDecorator spanDecorator : spanDecorators) {
-                    spanDecorator.onError(httpRequest, httpResponse, ex, scope.span());
+                    spanDecorator.onError(httpRequest, httpResponse, ex, span);
                 }
                 throw ex;
             } finally {
@@ -209,9 +210,9 @@ public class TracingFilter implements Filter {
                             for (ServletFilterSpanDecorator spanDecorator: spanDecorators) {
                                     spanDecorator.onResponse(httpRequest,
                                     httpResponse,
-                                    scope.span());
+                                    span);
                             }
-                            scope.span().finish();
+                            span.finish();
                         }
 
                         @Override
@@ -222,7 +223,7 @@ public class TracingFilter implements Filter {
                                   spanDecorator.onTimeout(httpRequest,
                                       httpResponse,
                                       event.getAsyncContext().getTimeout(),
-                                      scope.span());
+                                      span);
                               }
                         }
 
@@ -234,7 +235,7 @@ public class TracingFilter implements Filter {
                                 spanDecorator.onError(httpRequest,
                                     httpResponse,
                                     event.getThrowable(),
-                                    scope.span());
+                                    span);
                             }
                         }
 
@@ -246,9 +247,8 @@ public class TracingFilter implements Filter {
                     // If not async, then need to explicitly finish the span associated with the scope.
                     // This is necessary, as we don't know whether this request is being handled
                     // asynchronously until after the scope has already been started.
-                    scope.span().finish();
+                    span.finish();
                 }
-                scope.close();
             }
         }
     }
