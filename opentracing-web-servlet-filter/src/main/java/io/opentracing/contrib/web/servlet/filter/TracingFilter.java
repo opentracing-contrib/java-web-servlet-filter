@@ -185,16 +185,14 @@ public class TracingFilter implements Filter {
                 spanDecorator.onRequest(httpRequest, span);
             }
 
-            try {
-                try (Scope scope = tracer.activateSpan(span)) {
-                    chain.doFilter(servletRequest, servletResponse);
-                }
+            try (Scope scope = tracer.activateSpan(span)) {
+                chain.doFilter(servletRequest, servletResponse);
                 if (!httpRequest.isAsyncStarted()) {
                     for (ServletFilterSpanDecorator spanDecorator : spanDecorators) {
                         spanDecorator.onResponse(httpRequest, httpResponse, span);
                     }
                 }
-                // catch all exceptions (e.g. RuntimeException, ServletException...)
+            // catch all exceptions (e.g. RuntimeException, ServletException...)
             } catch (Throwable ex) {
                 for (ServletFilterSpanDecorator spanDecorator : spanDecorators) {
                     spanDecorator.onError(httpRequest, httpResponse, ex, span);
