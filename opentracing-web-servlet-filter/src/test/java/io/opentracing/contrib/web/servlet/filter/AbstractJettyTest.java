@@ -211,7 +211,7 @@ public abstract class AbstractJettyTest {
                 @Override
                 public void run() {
                     HttpServletResponse asyncResponse = (HttpServletResponse) asyncContext.getResponse();
-                    try (Scope activeScope = tracer.scopeManager().activate(cont, false)) {
+                    try (Scope activeScope = tracer.scopeManager().activate(cont)) {
                         try {
                             Thread.sleep(ASYNC_SLEEP_TIME_MS);
                             asyncResponse.setStatus(204);
