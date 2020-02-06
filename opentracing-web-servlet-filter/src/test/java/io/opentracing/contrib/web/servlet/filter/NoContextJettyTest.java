@@ -50,14 +50,14 @@ public class NoContextJettyTest extends AbstractJettyTest {
 	public void beforeTest() throws Exception {
 		mockTracer = Mockito.spy(new MockTracer(new ThreadLocalScopeManager(), MockTracer.Propagator.TEXT_MAP));
 
-		ServletHandler servletContext = new ServletHandler();
-		servletContext.addServletWithMapping(TestServlet.class, "/hello");
+		ServletHandler servletHandler = new ServletHandler();
+		servletHandler.addServletWithMapping(TestServlet.class, "/hello");
 
-		servletContext.addFilterWithMapping(new FilterHolder(tracingFilter()), "/*", EnumSet.of(DispatcherType.REQUEST,
+		servletHandler.addFilterWithMapping(new FilterHolder(tracingFilter()), "/*", EnumSet.of(DispatcherType.REQUEST,
 				DispatcherType.FORWARD, DispatcherType.ASYNC, DispatcherType.ERROR, DispatcherType.INCLUDE));
 
 		jettyServer = new Server(0);
-		jettyServer.setHandler(servletContext);
+		jettyServer.setHandler(servletHandler);
 		jettyServer.start();
 		serverPort = ((ServerConnector) jettyServer.getConnectors()[0]).getLocalPort();
 	}
