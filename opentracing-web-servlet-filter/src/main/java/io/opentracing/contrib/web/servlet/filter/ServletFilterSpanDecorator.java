@@ -98,8 +98,12 @@ public interface ServletFilterSpanDecorator {
 
         @Override
         public void onResponse(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
-                Span span) {
-                Tags.HTTP_STATUS.set(span, httpServletResponse.getStatus());
+                               Span span) {
+            // to handle the errors which are consumed before filterChain
+            if (hasErrorStatus(httpServletResponse)) {
+                Tags.ERROR.set(span, Boolean.TRUE);
+            }
+            Tags.HTTP_STATUS.set(span, httpServletResponse.getStatus());
         }
 
         @Override
@@ -136,6 +140,10 @@ public interface ServletFilterSpanDecorator {
             errorLog.put("stack", sw.toString());
 
             return errorLog;
+        }
+
+        private boolean hasErrorStatus(HttpServletResponse httpServletResponse) {
+            return httpServletResponse.getStatus() >= HttpServletResponse.SC_BAD_REQUEST;
         }
     };
 }
