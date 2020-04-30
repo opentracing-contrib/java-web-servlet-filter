@@ -106,12 +106,13 @@ public class TracingFilterTest extends AbstractJettyTest {
 
         MockSpan mockSpan = mockSpans.get(0);
         Assert.assertEquals("GET", mockSpan.operationName());
-        Assert.assertEquals(5, mockSpan.tags().size());
+        Assert.assertEquals(6, mockSpan.tags().size());
         Assert.assertEquals(Tags.SPAN_KIND_SERVER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
         Assert.assertEquals("GET", mockSpan.tags().get(Tags.HTTP_METHOD.getKey()));
         Assert.assertEquals(localRequestUrl("/doesNotExist"), mockSpan.tags().get(Tags.HTTP_URL.getKey()));
         Assert.assertEquals(404, mockSpan.tags().get(Tags.HTTP_STATUS.getKey()));
         Assert.assertEquals("java-web-servlet", mockSpan.tags().get(Tags.COMPONENT.getKey()));
+        Assert.assertEquals(true, mockSpan.tags().get(Tags.ERROR.getKey()));
     }
 
     @Test
@@ -254,12 +255,13 @@ public class TracingFilterTest extends AbstractJettyTest {
 
         MockSpan mockSpan = mockSpans.get(0);
         Assert.assertEquals("GET", mockSpan.operationName());
-        Assert.assertEquals(5, mockSpan.tags().size());
+        Assert.assertEquals(6, mockSpan.tags().size());
         Assert.assertEquals(Tags.SPAN_KIND_SERVER, mockSpan.tags().get(Tags.SPAN_KIND.getKey()));
         Assert.assertEquals("GET", mockSpan.tags().get(Tags.HTTP_METHOD.getKey()));
         Assert.assertEquals(localRequestUrl("/asyncTimeout"), mockSpan.tags().get(Tags.HTTP_URL.getKey()));
         Assert.assertEquals(500, mockSpan.tags().get(Tags.HTTP_STATUS.getKey()));
         Assert.assertEquals("java-web-servlet", mockSpan.tags().get(Tags.COMPONENT.getKey()));
+        Assert.assertEquals(true, mockSpan.tags().get(Tags.ERROR.getKey()));
 
         Assert.assertEquals(1, mockSpan.logEntries().size());
         Assert.assertEquals(2, mockSpan.logEntries().get(0).fields().size());
